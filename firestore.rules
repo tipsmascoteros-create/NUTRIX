@@ -73,7 +73,7 @@ service cloud.firestore {
       data.plan in ['free', 'premium'] &&
       data.role in ['user', 'admin'] &&
       data.subscriptionStatus in ['none', 'active', 'past_due', 'canceled'] &&
-      data.subscriptionProvider in ['none', 'stripe', 'mercadopago'] &&
+      data.subscriptionProvider in ['none', 'stripe', 'mercadopago', 'hotmart'] &&
       data.subscriptionRenewsAt is string && data.subscriptionRenewsAt.size() <= 40 &&
       data.age is number && data.age >= 0 && data.age <= 120 &&
       data.heightCm is number && data.heightCm >= 0 && data.heightCm <= 260 &&
@@ -280,6 +280,25 @@ service cloud.firestore {
       data.uid is string && data.uid == adminUid && isValidId(data.uid) &&
       data.email is string && data.email.size() >= 3 && data.email.size() <= 254 &&
       data.grantedAt is timestamp;
+    }
+
+    function isValidEntitlement(data) {
+      return data.keys().hasAll([
+        'email', 'buyerName', 'plan', 'status', 'provider',
+        'hotmartOfferCode', 'hotmartTransaction', 'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'email', 'buyerName', 'plan', 'status', 'provider',
+        'hotmartOfferCode', 'hotmartTransaction', 'createdAt', 'updatedAt'
+      ]) &&
+      data.email is string && data.email.size() >= 3 && data.email.size() <= 254 &&
+      data.buyerName is string && data.buyerName.size() <= 120 &&
+      data.plan in ['free', 'premium'] &&
+      data.status in ['active', 'canceled', 'refunded'] &&
+      data.provider in ['hotmart', 'admin'] &&
+      data.hotmartOfferCode is string && data.hotmartOfferCode.size() <= 40 &&
+      data.hotmartTransaction is string && data.hotmartTransaction.size() <= 80 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
     }
 
     // --- Collection Rules ---
@@ -497,6 +516,26 @@ service cloud.firestore {
         isValidAdminRecord(incoming(), adminUid) &&
         incoming().grantedAt == request.time;
       allow delete: if isValidId(adminUid) && isAdmin();
+    }
+
+    // 11. Subscription Entitlements (Hotmart & Admin Provisioned — PII Isolated by Verified Email)
+    match /entitlements/{entitlementId} {
+      allow get: if isValidId(entitlementId) && (
+        isAdmin() ||
+        (isVerified() && resource.data.email == request.auth.token.email.lower())
+      );
+      allow list: if isAdmin() || (
+        isVerified() && resource.data.email == request.auth.token.email.lower()
+      );
+      allow create: if isValidId(entitlementId) && isAdmin() &&
+        isValidEntitlement(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(entitlementId) && isValidEntitlement(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow delete: if isValidId(entitlementId) && isAdmin();
     }
   }
 }

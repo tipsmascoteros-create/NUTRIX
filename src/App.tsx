@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import {
   collection,
@@ -30,7 +30,9 @@ import { NutritionEconomyModule } from './components/NutritionEconomyModule.tsx'
 import { OnboardingModal } from './components/OnboardingModal.tsx';
 import { PantryModule } from './components/PantryModule.tsx';
 import { ProfileAccountModule } from './components/ProfileAccountModule.tsx';
+import { SubscriptionGate } from './components/SubscriptionGate.tsx';
 import { UpgradeModal } from './components/UpgradeModal.tsx';
+import { apiFetch } from './lib/apiClient.ts';
 import {
   auth,
   BOOTSTRAPPED_ADMIN_EMAIL,
@@ -42,6 +44,7 @@ import {
 import { getCurrentIsoWeekKey } from './lib/formatters.ts';
 import {
   ensureUserProfile,
+  fetchMyFirestoreEntitlement,
   getAppConfig,
   logAnalyticsEvent,
 } from './lib/nutrixService.ts';
@@ -51,8 +54,12 @@ import {
   type EconomyEntry,
   type NutritionLog,
   type PantryItem,
+  type PlanType,
   type SavedRecipe,
+  type ServerEntitlementResponse,
   type ShoppingItem,
+  type SubscriptionEntitlement,
+  type SubscriptionProvider,
   type UserProfile,
   type WeeklyMealPlan,
 } from './types/nutrix.ts';
@@ -62,6 +69,14 @@ function NutrixWorkspace() {
   const [fbUser, setFbUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [config, setConfig] = useState<AppConfig>(DEFAULT_APP_CONFIG);
+
+  const [entitlementChecked, setEntitlementChecked] = useState(false);
+  const [entitlementRechecking, setEntitlementRechecking] = useState(false);
+  const [entitlementStatusMsg, setEntitlementStatusMsg] = useState('');
+  const [firestoreEntitlement, setFirestoreEntitlement] =
+    useState<SubscriptionEntitlement | null>(null);
+  const [serverEntitlement, setServerEntitlement] =
+    useState<ServerEntitlementResponse | null>(null);
 
   const [pantry, setPantry] = useState<PantryItem[]>([]);
   const [recipes, setRecipes] = useState<SavedRecipe[]>([]);
@@ -75,7 +90,7 @@ function NutrixWorkspace() {
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('register');
-  const [pendingPlanIntent, setPendingPlanIntent] = useState<'basic' | 'premium' | null>(null);
+  const [fromHotmartPurchase, setFromHotmartPurchase] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState<string | null>(null);
   const [upgradeInitialPlan, setUpgradeInitialPlan] = useState<'basic' | 'premium'>('premium');
   const [legalTab, setLegalTab] = useState<LegalTab | null>(null);
@@ -85,12 +100,67 @@ function NutrixWorkspace() {
       (fbUser.email === BOOTSTRAPPED_ADMIN_EMAIL || profile?.role === 'admin'),
   );
 
+  // Detect Hotmart post-purchase redirect (?acesso=hotmart or ?hotmart=1)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (
+      params.get('acesso') === 'hotmart' ||
+      params.get('hotmart') === '1' ||
+      params.get('checkout') === 'sucesso'
+    ) {
+      setFromHotmartPurchase(true);
+      setAuthModalMode('login');
+      setAuthModalOpen(true);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const verifyEntitlements = useCallback(async (email: string, showFeedback = false) => {
+    if (showFeedback) {
+      setEntitlementRechecking(true);
+      setEntitlementStatusMsg('');
+    }
+    try {
+      const [fsEnt, srvEnt] = await Promise.all([
+        fetchMyFirestoreEntitlement(email),
+        apiFetch<ServerEntitlementResponse>('/api/payments/entitlement').catch(
+          (): ServerEntitlementResponse => ({
+            active: false,
+            plan: null,
+            status: 'none',
+            provider: 'none',
+            source: 'none',
+          }),
+        ),
+      ]);
+      setFirestoreEntitlement(fsEnt);
+      setServerEntitlement(srvEnt);
+
+      if (showFeedback) {
+        const unlocked = fsEnt?.status === 'active' || srvEnt?.active === true;
+        if (!unlocked) {
+          setEntitlementStatusMsg(
+            'Ainda não localizamos a confirmação da Hotmart para este e-mail. Se acabou de pagar via Pix ou cartão, aguarde alguns segundos e tente novamente, ou confira se o e-mail é o mesmo usado na compra.',
+          );
+        }
+      }
+    } finally {
+      setEntitlementChecked(true);
+      if (showFeedback) setEntitlementRechecking(false);
+    }
+  }, []);
+
   // 1. Auth state listener
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       setFbUser(user);
       if (!user) {
         setProfile(null);
+        setFirestoreEntitlement(null);
+        setServerEntitlement(null);
+        setEntitlementChecked(false);
+        setEntitlementStatusMsg('');
         setPantry([]);
         setRecipes([]);
         setMealPlan(null);
@@ -106,6 +176,7 @@ function NutrixWorkspace() {
         return;
       }
 
+      setEntitlementChecked(false);
       try {
         const [ensured, appCfg] = await Promise.all([
           ensureUserProfile({
@@ -117,32 +188,118 @@ function NutrixWorkspace() {
         ]);
         setProfile(ensured);
         setConfig(appCfg);
-        if (pendingPlanIntent && ensured.plan === 'free') {
-          setUpgradeInitialPlan(pendingPlanIntent);
-          setUpgradeReason(
-            pendingPlanIntent === 'basic'
-              ? 'Finalize sua assinatura do NUTRIX Básico (R$ 19,00/mês) ou conheça o Premium (R$ 37,00/mês) com todos os módulos liberados.'
-              : 'Finalize sua assinatura do NUTRIX Premium (R$ 37,00/mês) para liberar todos os módulos desde o primeiro dia.',
-          );
-          setPendingPlanIntent(null);
-        }
+        await verifyEntitlements(user.email || '');
       } catch (err) {
         console.error('Failed to bootstrap profile:', err);
+        setEntitlementChecked(true);
       } finally {
         setAuthReady(true);
       }
     });
     return () => unsub();
-  }, [pendingPlanIntent]);
+  }, [verifyEntitlements]);
 
-  // 2. Real-time Firestore listeners (STRICTLY attached only when authenticated & verified)
+  // Resolve effective access & plan strictly from trusted sources (Admin, Firestore Admin-managed profile/entitlement, or Server-verified Hotmart)
+  const accessState = useMemo(() => {
+    if (!profile) {
+      return {
+        hasActiveAccess: false,
+        effectivePlan: 'free' as PlanType,
+        effectiveProvider: 'none' as SubscriptionProvider,
+        wasRevoked: false,
+      };
+    }
+
+    if (isAdmin) {
+      return {
+        hasActiveAccess: true,
+        effectivePlan: 'premium' as PlanType,
+        effectiveProvider: 'hotmart' as SubscriptionProvider,
+        wasRevoked: false,
+      };
+    }
+
+    if (profile.subscriptionStatus === 'active') {
+      return {
+        hasActiveAccess: true,
+        effectivePlan: profile.plan,
+        effectiveProvider:
+          profile.subscriptionProvider === 'none' ? 'hotmart' : profile.subscriptionProvider,
+        wasRevoked: false,
+      };
+    }
+
+    if (firestoreEntitlement?.status === 'active') {
+      return {
+        hasActiveAccess: true,
+        effectivePlan: firestoreEntitlement.plan,
+        effectiveProvider: 'hotmart' as SubscriptionProvider,
+        wasRevoked: false,
+      };
+    }
+
+    if (serverEntitlement?.active && serverEntitlement.plan) {
+      return {
+        hasActiveAccess: true,
+        effectivePlan: serverEntitlement.plan,
+        effectiveProvider: 'hotmart' as SubscriptionProvider,
+        wasRevoked: false,
+      };
+    }
+
+    const wasRevoked =
+      profile.subscriptionStatus === 'canceled' ||
+      firestoreEntitlement?.status === 'canceled' ||
+      firestoreEntitlement?.status === 'refunded' ||
+      serverEntitlement?.status === 'canceled' ||
+      serverEntitlement?.status === 'refunded';
+
+    return {
+      hasActiveAccess: false,
+      effectivePlan: 'free' as PlanType,
+      effectiveProvider: 'none' as SubscriptionProvider,
+      wasRevoked,
+    };
+  }, [profile, isAdmin, firestoreEntitlement, serverEntitlement]);
+
+  const effectiveProfile = useMemo<UserProfile | null>(() => {
+    if (!profile) return null;
+    if (!accessState.hasActiveAccess) return profile;
+    return {
+      ...profile,
+      plan: accessState.effectivePlan,
+      subscriptionStatus: 'active',
+      subscriptionProvider: accessState.effectiveProvider,
+    };
+  }, [profile, accessState]);
+
+  // 2. Real-time Firestore listeners (STRICTLY attached only when authenticated, verified, AND has active paid/admin access)
   useEffect(() => {
     if (!authReady || !fbUser || !fbUser.emailVerified || !profile) return;
     const uid = fbUser.uid;
+
+    // Always listen to own user doc so Admin plan changes unlock access in real time
+    const userUnsub = onSnapshot(
+      doc(db, 'users', uid),
+      (snap) => {
+        if (snap.exists()) setProfile(snap.data() as UserProfile);
+      },
+      (err) => handleFirestoreError(err, OperationType.GET, `users/${uid}`),
+    );
+
+    if (!accessState.hasActiveAccess) {
+      return () => userUnsub();
+    }
+
     const weekId = getCurrentIsoWeekKey().replace(/[^a-zA-Z0-9_-]/g, '_');
 
     const getMillis = (val: unknown): number => {
-      if (val && typeof val === 'object' && 'toMillis' in val && typeof (val as { toMillis: () => number }).toMillis === 'function') {
+      if (
+        val &&
+        typeof val === 'object' &&
+        'toMillis' in val &&
+        typeof (val as { toMillis: () => number }).toMillis === 'function'
+      ) {
         return (val as { toMillis: () => number }).toMillis();
       }
       if (typeof val === 'string') {
@@ -155,13 +312,7 @@ function NutrixWorkspace() {
       [...arr].sort((a, b) => getMillis(b.createdAt) - getMillis(a.createdAt));
 
     const unsubs = [
-      onSnapshot(
-        doc(db, 'users', uid),
-        (snap) => {
-          if (snap.exists()) setProfile(snap.data() as UserProfile);
-        },
-        (err) => handleFirestoreError(err, OperationType.GET, `users/${uid}`),
-      ),
+      userUnsub,
       onSnapshot(
         query(collection(db, 'users', uid, 'pantry'), where('userId', '==', uid)),
         (snap) => {
@@ -230,29 +381,29 @@ function NutrixWorkspace() {
     return () => {
       unsubs.forEach((u) => u());
     };
-  }, [authReady, fbUser, profile?.uid]);
+  }, [authReady, fbUser, profile?.uid, accessState.hasActiveAccess]);
 
   const openUpgrade = (reason: string, initialPlan: 'basic' | 'premium' = 'premium') => {
     setUpgradeInitialPlan(initialPlan);
     setUpgradeReason(reason);
-    if (profile) {
+    if (effectiveProfile) {
       void logAnalyticsEvent({
-        userId: profile.uid,
+        userId: effectiveProfile.uid,
         eventName: 'premium_clicked',
-        plan: profile.plan,
+        plan: effectiveProfile.plan,
         metadata: reason.slice(0, 200),
-        analyticsConsent: profile.analyticsConsent,
+        analyticsConsent: effectiveProfile.analyticsConsent,
       });
     }
   };
 
   // Loading boot state
-  if (!authReady) {
+  if (!authReady || (fbUser && fbUser.emailVerified && profile && !entitlementChecked)) {
     return (
       <div className="min-h-screen bg-[#F5F7F5] flex items-center justify-center">
         <div className="text-center space-y-2">
           <p className="font-display text-2xl font-bold text-[#173D32]">NUTRIX</p>
-          <p className="text-xs text-[#52635B]">Carregando sua cozinha inteligente...</p>
+          <p className="text-xs text-[#52635B]">Verificando sua assinatura...</p>
         </div>
       </div>
     );
@@ -293,22 +444,19 @@ function NutrixWorkspace() {
   }
 
   // Public Landing Page when signed out
-  if (!fbUser || !profile) {
+  if (!fbUser || !effectiveProfile) {
     return (
       <>
         <LandingPage
           onStartBasic={() => {
-            setPendingPlanIntent('basic');
             setAuthModalMode('register');
             setAuthModalOpen(true);
           }}
           onStartPremium={() => {
-            setPendingPlanIntent('premium');
             setAuthModalMode('register');
             setAuthModalOpen(true);
           }}
           onOpenLogin={() => {
-            setPendingPlanIntent(null);
             setAuthModalMode('login');
             setAuthModalOpen(true);
           }}
@@ -317,7 +465,26 @@ function NutrixWorkspace() {
         <AuthModal
           open={authModalOpen}
           initialMode={authModalMode}
+          fromHotmartPurchase={fromHotmartPurchase}
           onClose={() => setAuthModalOpen(false)}
+          onOpenLegal={(tab) => setLegalTab(tab)}
+        />
+        <LegalModal tab={legalTab} onClose={() => setLegalTab(null)} onChangeTab={setLegalTab} />
+      </>
+    );
+  }
+
+  // Paywall Gate: Block workspace access when user has NO active paid subscription (and is not admin)
+  if (!accessState.hasActiveAccess) {
+    return (
+      <>
+        <SubscriptionGate
+          profile={effectiveProfile}
+          checking={entitlementRechecking}
+          statusMessage={entitlementStatusMsg}
+          wasRevoked={accessState.wasRevoked}
+          onRecheckAccess={() => verifyEntitlements(fbUser.email || '', true)}
+          onLogout={() => logoutUser()}
           onOpenLegal={(tab) => setLegalTab(tab)}
         />
         <LegalModal tab={legalTab} onClose={() => setLegalTab(null)} onChangeTab={setLegalTab} />
@@ -382,7 +549,7 @@ function NutrixWorkspace() {
         </div>
 
         <div className="space-y-3 pt-4 border-t border-white/15">
-          {profile.plan === 'free' && (
+          {effectiveProfile.plan === 'free' && (
             <button
               type="button"
               onClick={() =>
@@ -404,9 +571,9 @@ function NutrixWorkspace() {
 
           <div className="flex items-center justify-between gap-2 px-2">
             <div className="min-w-0">
-              <p className="text-xs font-semibold truncate">{profile.displayName}</p>
+              <p className="text-xs font-semibold truncate">{effectiveProfile.displayName}</p>
               <p className="text-[11px] text-white/70 truncate">
-                {profile.plan === 'premium' ? 'Plano Premium' : 'Plano Básico'}
+                {effectiveProfile.plan === 'premium' ? 'Plano Premium' : 'Plano Básico'}
               </p>
             </div>
             <button
@@ -423,11 +590,11 @@ function NutrixWorkspace() {
 
       {/* Main Content Area */}
       <div className="flex-1 min-w-0 flex flex-col">
-        {/* Compact Mobile Header (keeps sticky footprint strictly <= 15% of viewport) */}
+        {/* Compact Mobile Header */}
         <header className="lg:hidden sticky top-0 z-30 h-13 bg-[#173D32] text-white px-4 flex items-center justify-between">
           <span className="font-display text-lg font-bold tracking-tight">NUTRIX</span>
           <div className="flex items-center gap-3">
-            {profile.plan === 'free' && (
+            {effectiveProfile.plan === 'free' && (
               <button
                 type="button"
                 onClick={() => openUpgrade('Desbloqueie o NUTRIX Premium por R$ 37,00/mês.')}
@@ -450,7 +617,7 @@ function NutrixWorkspace() {
         <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-8 py-6 pb-24 lg:pb-10">
           {activeTab === 'dashboard' && (
             <DashboardHome
-              profile={profile}
+              profile={effectiveProfile}
               config={config}
               pantry={pantry}
               recipes={recipes}
@@ -469,7 +636,7 @@ function NutrixWorkspace() {
 
           {activeTab === 'pantry' && (
             <PantryModule
-              profile={profile}
+              profile={effectiveProfile}
               config={config}
               pantry={pantry}
               onOpenUpgrade={openUpgrade}
@@ -478,7 +645,7 @@ function NutrixWorkspace() {
 
           {activeTab === 'chef' && (
             <ChefAiModule
-              profile={profile}
+              profile={effectiveProfile}
               config={config}
               pantry={pantry}
               recipes={recipes}
@@ -489,7 +656,7 @@ function NutrixWorkspace() {
 
           {activeTab === 'planner' && (
             <MealPlannerModule
-              profile={profile}
+              profile={effectiveProfile}
               config={config}
               pantry={pantry}
               recipes={recipes}
@@ -501,7 +668,7 @@ function NutrixWorkspace() {
 
           {activeTab === 'nutrition_economy' && (
             <NutritionEconomyModule
-              profile={profile}
+              profile={effectiveProfile}
               pantry={pantry}
               recipes={recipes}
               nutritionLogs={nutritionLogs}
@@ -516,7 +683,7 @@ function NutrixWorkspace() {
 
           {activeTab === 'account' && (
             <ProfileAccountModule
-              profile={profile}
+              profile={effectiveProfile}
               onOpenUpgrade={openUpgrade}
               onOpenLegal={(tab) => setLegalTab(tab)}
             />
@@ -550,15 +717,15 @@ function NutrixWorkspace() {
       </div>
 
       {/* Modals */}
-      {!profile.onboardingCompleted && (
-        <OnboardingModal profile={profile} onComplete={() => {}} />
+      {!effectiveProfile.onboardingCompleted && (
+        <OnboardingModal profile={effectiveProfile} onComplete={() => {}} />
       )}
 
       <UpgradeModal
         open={upgradeReason !== null}
         reason={upgradeReason || undefined}
         initialPlan={upgradeInitialPlan}
-        profile={profile}
+        profile={effectiveProfile}
         basicPriceBrl={19}
         priceBrl={config.premiumPriceBrl}
         onClose={() => setUpgradeReason(null)}

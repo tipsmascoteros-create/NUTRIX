@@ -11,8 +11,11 @@ import {
   createMercadoPagoSubscription,
   createStripeCheckoutSession,
   getPaymentConfigStatus,
+  listRecentHotmartWebhookEntitlements,
+  lookupHotmartEntitlementForEmail,
   markHotmartEventProcessed,
   markMercadoPagoEventProcessed,
+  processHotmartWebhookEvent,
   verifyAndDeduplicateStripeWebhook,
   verifyHotmartWebhookToken,
   verifyMercadoPagoWebhookSignature,
@@ -193,7 +196,7 @@ async function startServer() {
     res.status(200).json({ received: true });
   });
 
-  // Hotmart verified webhook (X-HOTMART-HOTTOK) with idempotency
+  // Hotmart verified webhook (X-HOTMART-HOTTOK) with idempotency + automatic entitlement provisioning
   app.post('/api/webhooks/hotmart', (req, res) => {
     const rawHeader = req.headers['x-hotmart-hottok'];
     const hottok = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
@@ -210,8 +213,56 @@ async function startServer() {
       return;
     }
 
-    console.info(`[Hotmart Webhook] Verified event ${eventType} (${eventId})`);
-    res.status(200).json({ received: true, event: eventType });
+    const outcome = processHotmartWebhookEvent(req.body);
+    console.info(
+      `[Hotmart Webhook] Verified event ${eventType} (${eventId}) -> ${outcome.action}`,
+    );
+    res.status(200).json({
+      received: true,
+      event: eventType,
+      action: outcome.action,
+      plan: outcome.record?.plan || null,
+      status: outcome.record?.status || null,
+    });
+  });
+
+  // Verified Hotmart entitlement lookup for the currently authenticated user (uses ONLY verified token email)
+  app.get('/api/payments/entitlement', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const verifiedEmail = req.user?.email;
+      const emailVerified = Boolean(req.user?.email_verified);
+      if (!verifiedEmail || !emailVerified) {
+        res.json({
+          active: false,
+          plan: null,
+          status: 'none',
+          provider: 'none',
+          source: 'none',
+        });
+        return;
+      }
+
+      const entitlement = await lookupHotmartEntitlementForEmail(verifiedEmail);
+      res.json(entitlement);
+    } catch (error) {
+      console.error('Entitlement lookup error:', error);
+      res.status(500).json({ error: 'Não foi possível verificar o status da assinatura.' });
+    }
+  });
+
+  // Admin-only inspection of Hotmart webhook records & integration readiness
+  app.get('/api/admin/hotmart-entitlements', requireAuth, (req: AuthRequest, res) => {
+    const email = String(req.user?.email || '').toLowerCase();
+    const verified = Boolean(req.user?.email_verified);
+    if (!verified || email !== 'sangarvall@gmail.com') {
+      res.status(403).json({ error: 'Acesso restrito a administradores.' });
+      return;
+    }
+
+    res.json({
+      items: listRecentHotmartWebhookEntitlements(),
+      config: getPaymentConfigStatus(),
+    });
   });
 
   // --- AI Routes (Protected by Firebase Auth + Technical Usage Cap) ---

@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { deleteUser } from 'firebase/auth';
-import { CreditCard, Download, ShieldCheck, Trash2, X } from 'lucide-react';
-import { apiFetch } from '../lib/apiClient.ts';
+import { CreditCard, Download, ExternalLink, ShieldCheck, Trash2, X } from 'lucide-react';
 import { auth, logoutUser } from '../lib/firebase.ts';
 import {
   deleteAllUserDataLgpd,
   exportUserDataLgpd,
-  logAnalyticsEvent,
   updateUserProfileFields,
 } from '../lib/nutrixService.ts';
 import { NUTRITION_GOALS, type UserProfile } from '../types/nutrix.ts';
@@ -89,29 +87,6 @@ export function ProfileAccountModule({
     }
   };
 
-  const handleCancelSubscription = async () => {
-    setError('');
-    try {
-      await apiFetch('/api/payments/cancel', {
-        method: 'POST',
-        body: JSON.stringify({ subscriptionId: '' }),
-      });
-      void logAnalyticsEvent({
-        userId: profile.uid,
-        eventName: 'subscription_canceled',
-        plan: profile.plan,
-        metadata: 'user_requested',
-        analyticsConsent: profile.analyticsConsent,
-      });
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Não foi possível cancelar a assinatura no provedor de pagamentos.',
-      );
-    }
-  };
-
   const handleDeleteAccount = async () => {
     setError('');
     try {
@@ -167,34 +142,37 @@ export function ProfileAccountModule({
           <p className="text-xs text-[#52635B]">
             Status:{' '}
             {profile.subscriptionStatus === 'active'
-              ? 'Assinatura ativa e recorrente'
+              ? profile.subscriptionProvider === 'hotmart'
+                ? 'Assinatura ativa via Hotmart'
+                : 'Assinatura ativa'
               : 'Assinatura pendente de confirmação'}{' '}
             · Conta: {profile.email}
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          {profile.plan === 'free' ? (
+        <div className="flex flex-wrap items-center gap-2.5">
+          {profile.plan === 'free' && (
             <button
               type="button"
               onClick={() =>
                 onOpenUpgrade(
-                  'Evolua para o NUTRIX Premium (R$ 37,00/mês) ou confirme sua assinatura do NUTRIX Básico (R$ 19,00/mês).',
+                  'Evolua para o NUTRIX Premium (R$ 37,00/mês) e desbloqueie foto da geladeira, despensa ilimitada e planejador semanal.',
                 )
               }
-              className="px-5 py-2.5 rounded-xl bg-[#173D32] text-white text-xs font-semibold hover:bg-[#0F2B23] whitespace-nowrap"
+              className="px-4 py-2.5 rounded-xl bg-[#173D32] text-white text-xs font-semibold hover:bg-[#0F2B23] whitespace-nowrap"
             >
-              Ver planos e assinatura
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleCancelSubscription}
-              className="px-4 py-2.5 rounded-xl border border-red-200 text-red-700 text-xs font-semibold hover:bg-red-50 whitespace-nowrap"
-            >
-              Cancelar assinatura
+              Evoluir para Premium
             </button>
           )}
+          <a
+            href="https://consumer.hotmart.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2.5 rounded-xl border border-[#DCE4DF] text-[#173D32] text-xs font-semibold hover:bg-[#F5F7F5] whitespace-nowrap inline-flex items-center gap-1.5"
+          >
+            <span>Gerenciar ou cancelar na Hotmart</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
         </div>
       </div>
 

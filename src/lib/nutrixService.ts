@@ -18,12 +18,15 @@ import {
   type AnalyticsEventRecord,
   type AppConfig,
   type EconomyEntry,
+  type EntitlementStatus,
   type MealPlanDay,
   type NutritionLog,
   type PantryItem,
   type PlanType,
   type SavedRecipe,
   type ShoppingItem,
+  type SubscriptionEntitlement,
+  type SubscriptionProvider,
   type UserProfile,
   type WeeklyMealPlan,
 } from '../types/nutrix.ts';
@@ -561,16 +564,125 @@ export async function adminUpdateUserPlan(
   targetUid: string,
   plan: PlanType,
   subscriptionStatus: UserProfile['subscriptionStatus'],
+  subscriptionProvider?: SubscriptionProvider,
 ) {
   const path = `users/${targetUid}`;
+  const payload: Record<string, unknown> = {
+    plan,
+    subscriptionStatus,
+    updatedAt: serverTimestamp(),
+  };
+  if (subscriptionProvider) {
+    payload.subscriptionProvider = subscriptionProvider;
+  }
   try {
-    await updateDoc(doc(db, 'users', targetUid), {
-      plan,
-      subscriptionStatus,
-      updatedAt: serverTimestamp(),
-    });
+    await updateDoc(doc(db, 'users', targetUid), payload);
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
+// --- Subscription Entitlements (Hotmart & Admin Email-Based Access) ---
+function emailToSafeEntitlementId(email: string): string {
+  const normalized = email.trim().toLowerCase();
+  const slug = normalized
+    .replace(/@/g, '_at_')
+    .replace(/\./g, '_dot_')
+    .replace(/[^a-z0-9_-]/g, '_');
+  return `ent_${slug}`.slice(0, 120);
+}
+
+export async function fetchMyFirestoreEntitlement(
+  email: string,
+): Promise<SubscriptionEntitlement | null> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return null;
+  const path = 'entitlements';
+  try {
+    const snap = await getDocs(
+      query(collection(db, 'entitlements'), where('email', '==', normalized), limit(5)),
+    );
+    if (snap.empty) return null;
+    const docs = snap.docs.map((d) => ({
+      id: d.id,
+      ...(d.data() as Omit<SubscriptionEntitlement, 'id'>),
+    }));
+    const active = docs.find((d) => d.status === 'active');
+    return active || docs[0];
+  } catch (error) {
+    console.warn('Entitlement lookup warning:', path, error);
+    return null;
+  }
+}
+
+export async function fetchAllEntitlementsForAdmin(): Promise<SubscriptionEntitlement[]> {
+  const path = 'entitlements';
+  try {
+    const snap = await getDocs(query(collection(db, 'entitlements'), limit(300)));
+    return snap.docs.map((d) => ({
+      id: d.id,
+      ...(d.data() as Omit<SubscriptionEntitlement, 'id'>),
+    }));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+  }
+}
+
+export async function adminUpsertEntitlementByEmail(params: {
+  email: string;
+  buyerName?: string;
+  plan: PlanType;
+  status: EntitlementStatus;
+  provider?: 'hotmart' | 'admin';
+  hotmartOfferCode?: string;
+  hotmartTransaction?: string;
+}): Promise<string> {
+  const normalizedEmail = params.email.trim().toLowerCase().slice(0, 254);
+  const id = emailToSafeEntitlementId(normalizedEmail);
+  const ref = doc(db, 'entitlements', id);
+  const path = `entitlements/${id}`;
+  try {
+    const existing = await getDoc(ref);
+    const offerCode =
+      (params.hotmartOfferCode || '').trim().slice(0, 40) ||
+      (params.plan === 'premium' ? 'cq053m7c' : '726sm43a');
+
+    if (existing.exists()) {
+      await updateDoc(ref, {
+        email: normalizedEmail,
+        buyerName: (params.buyerName || '').trim().slice(0, 120),
+        plan: params.plan,
+        status: params.status,
+        provider: params.provider || 'hotmart',
+        hotmartOfferCode: offerCode,
+        hotmartTransaction: (params.hotmartTransaction || '').trim().slice(0, 80),
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      await setDoc(ref, {
+        email: normalizedEmail,
+        buyerName: (params.buyerName || '').trim().slice(0, 120),
+        plan: params.plan,
+        status: params.status,
+        provider: params.provider || 'hotmart',
+        hotmartOfferCode: offerCode,
+        hotmartTransaction: (params.hotmartTransaction || '').trim().slice(0, 80),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
+    return id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function adminDeleteEntitlement(entitlementId: string): Promise<void> {
+  const path = `entitlements/${entitlementId}`;
+  try {
+    await deleteDoc(doc(db, 'entitlements', entitlementId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
 

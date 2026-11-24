@@ -1,7 +1,31 @@
 export type PlanType = 'free' | 'premium';
 export type UserRole = 'user' | 'admin';
 export type SubscriptionStatus = 'none' | 'active' | 'past_due' | 'canceled';
-export type SubscriptionProvider = 'none' | 'stripe' | 'mercadopago';
+export type SubscriptionProvider = 'none' | 'stripe' | 'mercadopago' | 'hotmart';
+export type EntitlementStatus = 'active' | 'canceled' | 'refunded';
+
+export interface SubscriptionEntitlement {
+  id: string;
+  email: string;
+  buyerName: string;
+  plan: PlanType;
+  status: EntitlementStatus;
+  provider: 'hotmart' | 'admin';
+  hotmartOfferCode: string;
+  hotmartTransaction: string;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+}
+
+export interface ServerEntitlementResponse {
+  active: boolean;
+  plan: PlanType | null;
+  status: EntitlementStatus | 'none';
+  provider: 'hotmart' | 'none';
+  transaction?: string;
+  source?: 'webhook' | 'hotmart_api' | 'none';
+  updatedAt?: string;
+}
 
 export type PantryCategory =
   | 'carnes'
@@ -250,12 +274,15 @@ export interface RecognizedIngredient {
 }
 
 export interface PaymentConfigStatus {
+  hotmartWebhookConfigured: boolean;
+  hotmartApiConfigured: boolean;
   stripeConfigured: boolean;
   stripeBasicConfigured: boolean;
   mercadoPagoConfigured: boolean;
   basicPriceBrl: number;
   priceBrl: number;
   missingEnvVars: {
+    hotmart: string[];
     stripe: string[];
     mercadoPago: string[];
   };

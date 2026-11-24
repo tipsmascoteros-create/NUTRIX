@@ -10,6 +10,7 @@ import {
 interface AuthModalProps {
   open: boolean;
   initialMode?: 'login' | 'register';
+  fromHotmartPurchase?: boolean;
   onClose: () => void;
   onOpenLegal: (tab: 'privacidade' | 'termos') => void;
 }
@@ -17,6 +18,7 @@ interface AuthModalProps {
 export function AuthModal({
   open,
   initialMode = 'register',
+  fromHotmartPurchase = false,
   onClose,
   onOpenLegal,
 }: AuthModalProps) {
@@ -144,6 +146,22 @@ export function AuthModal({
               : 'Planos Básico (R$ 19,00/mês) e Premium (R$ 37,00/mês), sem fidelidade.'}
           </p>
         </div>
+
+        {mode !== 'reset' && (
+          <div
+            className={`mb-5 p-3.5 rounded-xl border text-xs leading-relaxed ${
+              fromHotmartPurchase
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                : 'bg-[#F5F7F5] border-[#DCE4DF] text-[#32433C]'
+            }`}
+          >
+            <strong className="font-semibold text-[#173D32]">
+              {fromHotmartPurchase ? 'Compra confirmada na Hotmart? ' : 'Já assinou na Hotmart? '}
+            </strong>
+            Entre ou crie sua conta usando o <strong>mesmo e-mail da compra</strong> para liberar
+            seu plano automaticamente.
+          </div>
+        )}
 
         {mode !== 'reset' && (
           <>

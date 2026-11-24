@@ -34,7 +34,43 @@
   text-wrap: balance;
 }
 
+@keyframes nutrix-marquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.nutrix-marquee-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: nutrix-marquee 42s linear infinite;
+}
+
+.nutrix-marquee-track:hover,
+.nutrix-marquee-track:focus-within {
+  animation-play-state: paused;
+}
+
+.nutrix-marquee-paused {
+  animation-play-state: paused !important;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .nutrix-marquee-track {
+    animation: none !important;
+  }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;

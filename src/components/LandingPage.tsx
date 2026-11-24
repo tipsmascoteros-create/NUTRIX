@@ -6,6 +6,7 @@ import {
   trackPlanCheckoutClick,
 } from '../lib/checkoutLinks.ts';
 import { formatBrl } from '../lib/formatters.ts';
+import { AppShowcaseCarousel } from './AppShowcaseCarousel.tsx';
 import { FoodImage } from './FoodImage.tsx';
 import type { LegalTab } from './LegalModal.tsx';
 import type { RecipeIngredient } from '../types/nutrix.ts';
@@ -213,72 +214,34 @@ export function LandingPage({
       </header>
 
       {/* SEÇÃO 1 — HERO */}
-      <section id="inicio" className="max-w-7xl mx-auto px-5 sm:px-8 pt-12 pb-16 lg:pt-20 lg:pb-24">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-stretch">
-          <div className="lg:col-span-6 flex flex-col justify-center">
-            <p className="text-sm font-medium text-[#173D32] mb-4">
-              Sua alimentação, mais inteligente.
-            </p>
-            <h1 className="font-display text-4xl sm:text-5xl lg:text-[3.35rem] font-bold tracking-tight text-[#111B17] leading-[1.08] text-balance">
-              Descubra o que preparar, coma melhor e economize usando os ingredientes que você já tem.
-            </h1>
-            <p className="mt-6 text-base sm:text-lg text-[#455750] leading-relaxed max-w-xl">
-              Com o NUTRIX, você transforma os alimentos que já tem em casa em refeições
-              equilibradas, acompanha informações nutricionais detalhadas, organiza suas compras e
-              ganha praticidade e economia no dia a dia.
-            </p>
+      <section id="inicio" className="max-w-7xl mx-auto px-5 sm:px-8 pt-12 pb-14 lg:pt-20 lg:pb-20">
+        <div className="max-w-3xl mx-auto text-center flex flex-col items-center">
+          <p className="text-sm font-medium text-[#173D32] mb-4">
+            Sua alimentação, mais inteligente.
+          </p>
+          <h1 className="font-display text-4xl sm:text-5xl lg:text-[3.5rem] font-bold tracking-tight text-[#111B17] leading-[1.08] text-balance">
+            Descubra o que preparar, coma melhor e economize usando os ingredientes que você já tem.
+          </h1>
+          <p className="mt-6 text-base sm:text-lg text-[#455750] leading-relaxed max-w-2xl">
+            Com o NUTRIX,{' '}
+            <strong className="font-bold text-[#111B17]">
+              você transforma os alimentos que já tem em casa em refeições equilibradas
+            </strong>
+            , acompanha informações nutricionais detalhadas, organiza suas compras e ganha
+            praticidade e economia no dia a dia.
+          </p>
 
-            <div className="mt-8 flex flex-col sm:flex-row sm:items-center gap-4">
-              <a
-                href="#planos"
-                className="px-6 py-3.5 rounded-xl bg-[#173D32] text-white font-semibold text-sm sm:text-base hover:bg-[#0F2B23] transition-colors inline-flex items-center justify-center gap-2.5 whitespace-nowrap"
-              >
-                <span>VER PLANOS E COMEÇAR</span>
-                <ArrowRight className="w-4 h-4 text-[#C3F28B]" />
-              </a>
-              <span className="text-xs text-[#52635B]">
-                A partir de R$&nbsp;19,00/mês · Cancele quando quiser
-              </span>
-            </div>
-
-            <div className="mt-10 pt-6 border-t border-[#DCE4DF] flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-[#52635B]">
-              <span>Cálculo nutricional por porção</span>
-              <span aria-hidden="true">·</span>
-              <span>Unidades brasileiras e orçamento em R$</span>
-              <span aria-hidden="true">·</span>
-              <span>Conformidade LGPD</span>
-            </div>
-          </div>
-
-          <div className="lg:col-span-6 flex">
-            <div className="relative w-full rounded-2xl overflow-hidden border border-[#DCE4DF] bg-[#173D32] min-h-[340px] lg:h-full">
-              <FoodImage
-                imageKey="hero"
-                alt="Bancada de cozinha brasileira com ingredientes frescos organizados pelo NUTRIX"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0F2B23]/85 via-[#0F2B23]/20 to-transparent" />
-              <div className="absolute bottom-5 left-5 right-5 bg-white/95 backdrop-blur-xs rounded-xl p-4 sm:p-5 border border-white/60">
-                <div className="flex items-center justify-between gap-4 text-xs text-[#52635B] mb-2">
-                  <span>Chef · Aproveitamento inteligente</span>
-                  <span className="font-mono tabular-nums text-[#173D32] font-semibold">
-                    22 min · 2 porções
-                  </span>
-                </div>
-                <p className="font-display font-semibold text-[#111B17] text-base">
-                  Bowl de frango com arroz de cenoura, vinagrete e brócolis
-                </p>
-                <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono tabular-nums text-[#32433C]">
-                  <span>442 kcal/porção</span>
-                  <span aria-hidden="true">·</span>
-                  <span>52g proteínas</span>
-                  <span aria-hidden="true">·</span>
-                  <span>39g carb</span>
-                  <span aria-hidden="true">·</span>
-                  <span className="text-[#173D32] font-semibold">100% da despensa</span>
-                </div>
-              </div>
-            </div>
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a
+              href="#planos"
+              className="px-6 py-3.5 rounded-xl bg-[#173D32] text-white font-semibold text-sm sm:text-base hover:bg-[#0F2B23] transition-colors inline-flex items-center justify-center gap-2.5 whitespace-nowrap"
+            >
+              <span>VER PLANOS E COMEÇAR</span>
+              <ArrowRight className="w-4 h-4 text-[#C3F28B]" />
+            </a>
+            <span className="text-xs text-[#52635B]">
+              A partir de R$&nbsp;19,00/mês · Cancele quando quiser
+            </span>
           </div>
         </div>
       </section>
@@ -373,15 +336,20 @@ export function LandingPage({
       </section>
 
       {/* SEÇÃO 5 — COMO FUNCIONA */}
-      <section id="como-funciona" className="bg-[#173D32] text-white py-16 lg:py-24">
+      <section id="como-funciona" className="bg-[#173D32] text-white py-16 lg:py-24 overflow-hidden">
         <div className="max-w-7xl mx-auto px-5 sm:px-8">
-          <div className="max-w-2xl mb-12">
+          <div className="max-w-2xl">
             <p className="text-xs font-medium text-[#C3F28B] mb-2">Simples desde o primeiro minuto</p>
             <h2 className="font-display text-3xl sm:text-4xl font-bold text-balance">
               Como o NUTRIX organiza sua rotina em três etapas
             </h2>
           </div>
+        </div>
 
+        {/* Carrossel horizontal responsivo com telas reais do NUTRIX por dentro */}
+        <AppShowcaseCarousel />
+
+        <div className="max-w-7xl mx-auto px-5 sm:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {

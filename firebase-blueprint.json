@@ -1,0 +1,364 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private user account, nutritional profile, budget settings, and subscription metadata.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "format": "email", "maxLength": 254 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "plan": { "type": "string", "enum": ["free", "premium"] },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "subscriptionStatus": { "type": "string", "enum": ["none", "active", "past_due", "canceled"] },
+        "subscriptionProvider": { "type": "string", "enum": ["none", "stripe", "mercadopago"] },
+        "subscriptionRenewsAt": { "type": "string", "maxLength": 40 },
+        "age": { "type": "number" },
+        "heightCm": { "type": "number" },
+        "weightKg": { "type": "number" },
+        "goal": { "type": "string", "maxLength": 80 },
+        "activityLevel": { "type": "string", "maxLength": 60 },
+        "mealsPerDay": { "type": "number" },
+        "weeklyBudgetBrl": { "type": "number" },
+        "monthlyBudgetBrl": { "type": "number" },
+        "restrictions": { "type": "array" },
+        "allergies": { "type": "array" },
+        "dislikes": { "type": "array" },
+        "favoriteIngredients": { "type": "array" },
+        "onboardingCompleted": { "type": "boolean" },
+        "lgpdConsentAt": { "type": "string", "maxLength": 40 },
+        "analyticsConsent": { "type": "boolean" },
+        "weeklyRecipesCount": { "type": "number" },
+        "weeklyRecipesResetAt": { "type": "string", "maxLength": 40 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "uid",
+        "email",
+        "displayName",
+        "plan",
+        "role",
+        "subscriptionStatus",
+        "subscriptionProvider",
+        "goal",
+        "mealsPerDay",
+        "weeklyBudgetBrl",
+        "monthlyBudgetBrl",
+        "restrictions",
+        "allergies",
+        "dislikes",
+        "favoriteIngredients",
+        "onboardingCompleted",
+        "analyticsConsent",
+        "weeklyRecipesCount",
+        "weeklyRecipesResetAt",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PantryItem": {
+      "title": "PantryItem",
+      "description": "An ingredient tracked in the user's smart pantry or refrigerator.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "maxLength": 120 },
+        "tacoKey": { "type": "string", "maxLength": 80 },
+        "category": {
+          "type": "string",
+          "enum": ["carnes", "frutas", "verduras", "graos", "laticinios", "temperos", "massas", "enlatados", "congelados", "outros"]
+        },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string", "enum": ["g", "kg", "ml", "L", "un", "colher", "xicara", "pacote"] },
+        "minThreshold": { "type": "number" },
+        "purchasePriceBrl": { "type": "number" },
+        "priceUnitQty": { "type": "number" },
+        "expiryDate": { "type": "string", "maxLength": 20 },
+        "storageLocation": { "type": "string", "enum": ["geladeira", "despensa", "freezer", "bancada"] },
+        "status": { "type": "string", "enum": ["available", "consumed", "discarded"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "name",
+        "tacoKey",
+        "category",
+        "quantity",
+        "unit",
+        "minThreshold",
+        "purchasePriceBrl",
+        "priceUnitQty",
+        "expiryDate",
+        "storageLocation",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SavedRecipe": {
+      "title": "SavedRecipe",
+      "description": "AI-generated or saved recipe with TACO/TBCA-backed nutrition and cost data.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "maxLength": 160 },
+        "description": { "type": "string", "maxLength": 600 },
+        "imageKey": { "type": "string", "enum": ["frango", "omelete", "veggie", "hero"] },
+        "prepTimeMin": { "type": "number" },
+        "difficulty": { "type": "string", "enum": ["Fácil", "Média", "Elaborada"] },
+        "servings": { "type": "number" },
+        "tags": { "type": "array" },
+        "ingredients": { "type": "array" },
+        "missingIngredients": { "type": "array" },
+        "steps": { "type": "array" },
+        "substitutions": { "type": "array" },
+        "sideDishes": { "type": "array" },
+        "nutritionPerServing": { "type": "object" },
+        "totalCostBrl": { "type": "number" },
+        "costPerServingBrl": { "type": "number" },
+        "hasUserPrices": { "type": "boolean" },
+        "isFavorite": { "type": "boolean" },
+        "timesCooked": { "type": "number" },
+        "rating": { "type": "number" },
+        "lastCookedAt": { "type": "string", "maxLength": 40 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "title",
+        "description",
+        "imageKey",
+        "prepTimeMin",
+        "difficulty",
+        "servings",
+        "tags",
+        "ingredients",
+        "missingIngredients",
+        "steps",
+        "substitutions",
+        "sideDishes",
+        "nutritionPerServing",
+        "totalCostBrl",
+        "costPerServingBrl",
+        "hasUserPrices",
+        "isFavorite",
+        "timesCooked",
+        "rating",
+        "lastCookedAt",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "WeeklyMealPlan": {
+      "title": "WeeklyMealPlan",
+      "description": "Structured weekly meal plan covering breakfast, lunch, snack, and dinner.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "weekKey": { "type": "string", "maxLength": 20 },
+        "servings": { "type": "number" },
+        "days": { "type": "array" },
+        "totalEstimatedCostBrl": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "weekKey", "servings", "days", "totalEstimatedCostBrl", "createdAt", "updatedAt"]
+    },
+    "ShoppingItem": {
+      "title": "ShoppingItem",
+      "description": "Smart grocery list item generated from meal plans or added manually.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "maxLength": 120 },
+        "category": { "type": "string", "maxLength": 40 },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string", "maxLength": 20 },
+        "estimatedPriceBrl": { "type": "number" },
+        "priceSource": { "type": "string", "enum": ["user", "estimate", "none"] },
+        "checked": { "type": "boolean" },
+        "source": { "type": "string", "enum": ["meal_plan", "recipe", "manual"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "name",
+        "category",
+        "quantity",
+        "unit",
+        "estimatedPriceBrl",
+        "priceSource",
+        "checked",
+        "source",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "NutritionLog": {
+      "title": "NutritionLog",
+      "description": "Daily nutrition log entry connected to cooked recipes or logged meals.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "date": { "type": "string", "maxLength": 20 },
+        "mealType": { "type": "string", "enum": ["cafe", "almoco", "lanche", "jantar"] },
+        "title": { "type": "string", "maxLength": 160 },
+        "recipeId": { "type": "string", "maxLength": 128 },
+        "servings": { "type": "number" },
+        "calories": { "type": "number" },
+        "proteinG": { "type": "number" },
+        "carbsG": { "type": "number" },
+        "fatG": { "type": "number" },
+        "fiberG": { "type": "number" },
+        "sodiumMg": { "type": "number" },
+        "costBrl": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "date",
+        "mealType",
+        "title",
+        "recipeId",
+        "servings",
+        "calories",
+        "proteinG",
+        "carbsG",
+        "fatG",
+        "fiberG",
+        "sodiumMg",
+        "costBrl",
+        "createdAt"
+      ]
+    },
+    "EconomyEntry": {
+      "title": "EconomyEntry",
+      "description": "Purchase, zero-waste rescue, or discarded food event for budget and waste analytics.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "type": { "type": "string", "enum": ["purchase", "saved_waste", "discarded"] },
+        "itemName": { "type": "string", "maxLength": 120 },
+        "category": { "type": "string", "maxLength": 40 },
+        "amountBrl": { "type": "number" },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string", "maxLength": 20 },
+        "date": { "type": "string", "maxLength": 20 },
+        "notes": { "type": "string", "maxLength": 240 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "itemName", "category", "amountBrl", "quantity", "unit", "date", "notes", "createdAt"]
+    },
+    "AnalyticsEvent": {
+      "title": "AnalyticsEvent",
+      "description": "Product funnel and AI usage telemetry event for the admin dashboard.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "eventName": {
+          "type": "string",
+          "enum": [
+            "signup_started",
+            "signup_completed",
+            "first_ingredient_added",
+            "first_recipe_generated",
+            "free_limit_reached",
+            "premium_clicked",
+            "checkout_started",
+            "payment_approved",
+            "subscription_canceled",
+            "photo_scan_used",
+            "meal_plan_generated",
+            "ai_error"
+          ]
+        },
+        "plan": { "type": "string", "enum": ["free", "premium"] },
+        "metadata": { "type": "string", "maxLength": 400 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "eventName", "plan", "metadata", "createdAt"]
+    },
+    "AppConfig": {
+      "title": "AppConfig",
+      "description": "Global plan limits and feature flags managed by authorized administrators.",
+      "type": "object",
+      "properties": {
+        "freeMaxIngredients": { "type": "number" },
+        "freeWeeklyRecipes": { "type": "number" },
+        "freeHistoryLimit": { "type": "number" },
+        "premiumPriceBrl": { "type": "number" },
+        "premiumDailyAiCap": { "type": "number" },
+        "enablePhotoRecognition": { "type": "boolean" },
+        "enableWeeklyPlanner": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "freeMaxIngredients",
+        "freeWeeklyRecipes",
+        "freeHistoryLimit",
+        "premiumPriceBrl",
+        "premiumDailyAiCap",
+        "enablePhotoRecognition",
+        "enableWeeklyPlanner",
+        "updatedAt"
+      ]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Explicit admin allowlist record keyed by UID.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "format": "email", "maxLength": 254 },
+        "grantedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "grantedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user account, nutrition preferences, and subscription state."
+    },
+    "/users/{userId}/pantry/{itemId}": {
+      "schema": { "$ref": "#/entities/PantryItem" },
+      "description": "Ingredients in the user's smart pantry and refrigerator."
+    },
+    "/users/{userId}/recipes/{recipeId}": {
+      "schema": { "$ref": "#/entities/SavedRecipe" },
+      "description": "Recipes generated by Chef IA or saved by the user."
+    },
+    "/users/{userId}/mealPlans/{planId}": {
+      "schema": { "$ref": "#/entities/WeeklyMealPlan" },
+      "description": "Weekly meal plan schedules."
+    },
+    "/users/{userId}/shoppingList/{itemId}": {
+      "schema": { "$ref": "#/entities/ShoppingItem" },
+      "description": "Smart grocery list items."
+    },
+    "/users/{userId}/nutritionLogs/{logId}": {
+      "schema": { "$ref": "#/entities/NutritionLog" },
+      "description": "Daily nutrition consumption logs."
+    },
+    "/users/{userId}/purchases/{purchaseId}": {
+      "schema": { "$ref": "#/entities/EconomyEntry" },
+      "description": "Food purchase, saved waste, and discarded food tracking."
+    },
+    "/analyticsEvents/{eventId}": {
+      "schema": { "$ref": "#/entities/AnalyticsEvent" },
+      "description": "Funnel and AI telemetry events readable only by admins."
+    },
+    "/appConfig/{configId}": {
+      "schema": { "$ref": "#/entities/AppConfig" },
+      "description": "Admin-managed plan limits and feature flags."
+    },
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Authorized admin UID registry."
+    }
+  }
+}

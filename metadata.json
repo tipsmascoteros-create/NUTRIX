@@ -1,0 +1,6 @@
+{
+  "name": "NUTRIX",
+  "description": "Sua alimentação, mais inteligente. Plataforma de organização alimentar com despensa inteligente, Chef pessoal, análise nutricional detalhada, economia doméstica e planejamento semanal.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,502 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Primitive Helpers ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerified() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerified() && (
+        request.auth.token.email == 'sangarvall@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isStringList(arr, maxLen) {
+      return arr is list && arr.size() <= maxLen && (arr.size() == 0 || arr[0] is string);
+    }
+
+    function userExists(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    // --- Validation Blueprints ---
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll([
+        'uid', 'email', 'displayName', 'plan', 'role',
+        'subscriptionStatus', 'subscriptionProvider', 'subscriptionRenewsAt',
+        'age', 'heightCm', 'weightKg', 'goal', 'activityLevel', 'mealsPerDay',
+        'weeklyBudgetBrl', 'monthlyBudgetBrl',
+        'restrictions', 'allergies', 'dislikes', 'favoriteIngredients',
+        'onboardingCompleted', 'lgpdConsentAt', 'analyticsConsent',
+        'weeklyRecipesCount', 'weeklyRecipesResetAt', 'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'uid', 'email', 'displayName', 'plan', 'role',
+        'subscriptionStatus', 'subscriptionProvider', 'subscriptionRenewsAt',
+        'age', 'heightCm', 'weightKg', 'goal', 'activityLevel', 'mealsPerDay',
+        'weeklyBudgetBrl', 'monthlyBudgetBrl',
+        'restrictions', 'allergies', 'dislikes', 'favoriteIngredients',
+        'onboardingCompleted', 'lgpdConsentAt', 'analyticsConsent',
+        'weeklyRecipesCount', 'weeklyRecipesResetAt', 'createdAt', 'updatedAt'
+      ]) &&
+      data.uid is string && data.uid == userId && isValidId(data.uid) &&
+      data.email is string && data.email.size() <= 254 &&
+      data.displayName is string && data.displayName.size() <= 120 &&
+      data.plan in ['free', 'premium'] &&
+      data.role in ['user', 'admin'] &&
+      data.subscriptionStatus in ['none', 'active', 'past_due', 'canceled'] &&
+      data.subscriptionProvider in ['none', 'stripe', 'mercadopago'] &&
+      data.subscriptionRenewsAt is string && data.subscriptionRenewsAt.size() <= 40 &&
+      data.age is number && data.age >= 0 && data.age <= 120 &&
+      data.heightCm is number && data.heightCm >= 0 && data.heightCm <= 260 &&
+      data.weightKg is number && data.weightKg >= 0 && data.weightKg <= 400 &&
+      data.goal is string && data.goal.size() <= 80 &&
+      data.activityLevel is string && data.activityLevel.size() <= 60 &&
+      data.mealsPerDay is number && data.mealsPerDay >= 1 && data.mealsPerDay <= 8 &&
+      data.weeklyBudgetBrl is number && data.weeklyBudgetBrl >= 0 && data.weeklyBudgetBrl <= 50000 &&
+      data.monthlyBudgetBrl is number && data.monthlyBudgetBrl >= 0 && data.monthlyBudgetBrl <= 200000 &&
+      isStringList(data.restrictions, 15) &&
+      isStringList(data.allergies, 15) &&
+      isStringList(data.dislikes, 20) &&
+      isStringList(data.favoriteIngredients, 20) &&
+      data.onboardingCompleted is bool &&
+      data.lgpdConsentAt is string && data.lgpdConsentAt.size() <= 40 &&
+      data.analyticsConsent is bool &&
+      data.weeklyRecipesCount is number && data.weeklyRecipesCount >= 0 && data.weeklyRecipesCount <= 1000 &&
+      data.weeklyRecipesResetAt is string && data.weeklyRecipesResetAt.size() <= 40 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidPantryItem(data, userId) {
+      return data.keys().hasAll([
+        'userId', 'name', 'tacoKey', 'category', 'quantity', 'unit',
+        'minThreshold', 'purchasePriceBrl', 'priceUnitQty', 'expiryDate',
+        'storageLocation', 'status', 'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'userId', 'name', 'tacoKey', 'category', 'quantity', 'unit',
+        'minThreshold', 'purchasePriceBrl', 'priceUnitQty', 'expiryDate',
+        'storageLocation', 'status', 'createdAt', 'updatedAt'
+      ]) &&
+      data.userId is string && data.userId == userId &&
+      data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+      data.tacoKey is string && data.tacoKey.size() <= 80 &&
+      data.category in ['carnes', 'frutas', 'verduras', 'graos', 'laticinios', 'temperos', 'massas', 'enlatados', 'congelados', 'outros'] &&
+      data.quantity is number && data.quantity >= 0 && data.quantity <= 100000 &&
+      data.unit in ['g', 'kg', 'ml', 'L', 'un', 'colher', 'xicara', 'pacote'] &&
+      data.minThreshold is number && data.minThreshold >= 0 && data.minThreshold <= 100000 &&
+      data.purchasePriceBrl is number && data.purchasePriceBrl >= 0 && data.purchasePriceBrl <= 10000 &&
+      data.priceUnitQty is number && data.priceUnitQty >= 0 && data.priceUnitQty <= 100000 &&
+      data.expiryDate is string && data.expiryDate.size() <= 20 &&
+      data.storageLocation in ['geladeira', 'despensa', 'freezer', 'bancada'] &&
+      data.status in ['available', 'consumed', 'discarded'] &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidRecipe(data, userId) {
+      return data.keys().hasAll([
+        'userId', 'title', 'description', 'imageKey', 'prepTimeMin', 'difficulty',
+        'servings', 'tags', 'ingredients', 'missingIngredients', 'steps',
+        'substitutions', 'sideDishes', 'nutritionPerServing', 'totalCostBrl',
+        'costPerServingBrl', 'hasUserPrices', 'isFavorite', 'timesCooked',
+        'rating', 'lastCookedAt', 'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'userId', 'title', 'description', 'imageKey', 'prepTimeMin', 'difficulty',
+        'servings', 'tags', 'ingredients', 'missingIngredients', 'steps',
+        'substitutions', 'sideDishes', 'nutritionPerServing', 'totalCostBrl',
+        'costPerServingBrl', 'hasUserPrices', 'isFavorite', 'timesCooked',
+        'rating', 'lastCookedAt', 'createdAt', 'updatedAt'
+      ]) &&
+      data.userId is string && data.userId == userId &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+      data.description is string && data.description.size() <= 600 &&
+      data.imageKey in ['frango', 'omelete', 'veggie', 'hero'] &&
+      data.prepTimeMin is number && data.prepTimeMin >= 1 && data.prepTimeMin <= 480 &&
+      data.difficulty in ['Fácil', 'Média', 'Elaborada'] &&
+      data.servings is number && data.servings >= 1 && data.servings <= 24 &&
+      isStringList(data.tags, 10) &&
+      data.ingredients is list && data.ingredients.size() <= 30 && (data.ingredients.size() == 0 || data.ingredients[0] is map) &&
+      isStringList(data.missingIngredients, 15) &&
+      isStringList(data.steps, 20) &&
+      isStringList(data.substitutions, 10) &&
+      isStringList(data.sideDishes, 8) &&
+      data.nutritionPerServing is map &&
+      data.totalCostBrl is number && data.totalCostBrl >= 0 && data.totalCostBrl <= 5000 &&
+      data.costPerServingBrl is number && data.costPerServingBrl >= 0 && data.costPerServingBrl <= 5000 &&
+      data.hasUserPrices is bool &&
+      data.isFavorite is bool &&
+      data.timesCooked is number && data.timesCooked >= 0 && data.timesCooked <= 1000 &&
+      data.rating is number && data.rating >= 0 && data.rating <= 5 &&
+      data.lastCookedAt is string && data.lastCookedAt.size() <= 40 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidMealPlan(data, userId) {
+      return data.keys().hasAll([
+        'userId', 'weekKey', 'servings', 'days', 'totalEstimatedCostBrl', 'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'userId', 'weekKey', 'servings', 'days', 'totalEstimatedCostBrl', 'createdAt', 'updatedAt'
+      ]) &&
+      data.userId is string && data.userId == userId &&
+      data.weekKey is string && data.weekKey.size() >= 4 && data.weekKey.size() <= 20 &&
+      data.servings is number && data.servings >= 1 && data.servings <= 12 &&
+      data.days is list && data.days.size() <= 7 && (data.days.size() == 0 || data.days[0] is map) &&
+      data.totalEstimatedCostBrl is number && data.totalEstimatedCostBrl >= 0 && data.totalEstimatedCostBrl <= 50000 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidShoppingItem(data, userId) {
+      return data.keys().hasAll([
+        'userId', 'name', 'category', 'quantity', 'unit',
+        'estimatedPriceBrl', 'priceSource', 'checked', 'source', 'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'userId', 'name', 'category', 'quantity', 'unit',
+        'estimatedPriceBrl', 'priceSource', 'checked', 'source', 'createdAt', 'updatedAt'
+      ]) &&
+      data.userId is string && data.userId == userId &&
+      data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+      data.category is string && data.category.size() <= 40 &&
+      data.quantity is number && data.quantity >= 0 && data.quantity <= 100000 &&
+      data.unit is string && data.unit.size() >= 1 && data.unit.size() <= 20 &&
+      data.estimatedPriceBrl is number && data.estimatedPriceBrl >= 0 && data.estimatedPriceBrl <= 10000 &&
+      data.priceSource in ['user', 'estimate', 'none'] &&
+      data.checked is bool &&
+      data.source in ['meal_plan', 'recipe', 'manual'] &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidNutritionLog(data, userId) {
+      return data.keys().hasAll([
+        'userId', 'date', 'mealType', 'title', 'recipeId', 'servings',
+        'calories', 'proteinG', 'carbsG', 'fatG', 'fiberG', 'sodiumMg', 'costBrl', 'createdAt'
+      ]) && data.keys().hasOnly([
+        'userId', 'date', 'mealType', 'title', 'recipeId', 'servings',
+        'calories', 'proteinG', 'carbsG', 'fatG', 'fiberG', 'sodiumMg', 'costBrl', 'createdAt'
+      ]) &&
+      data.userId is string && data.userId == userId &&
+      data.date is string && data.date.size() >= 8 && data.date.size() <= 20 &&
+      data.mealType in ['cafe', 'almoco', 'lanche', 'jantar'] &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+      data.recipeId is string && data.recipeId.size() <= 128 &&
+      data.servings is number && data.servings > 0 && data.servings <= 20 &&
+      data.calories is number && data.calories >= 0 && data.calories <= 10000 &&
+      data.proteinG is number && data.proteinG >= 0 && data.proteinG <= 1000 &&
+      data.carbsG is number && data.carbsG >= 0 && data.carbsG <= 1500 &&
+      data.fatG is number && data.fatG >= 0 && data.fatG <= 1000 &&
+      data.fiberG is number && data.fiberG >= 0 && data.fiberG <= 300 &&
+      data.sodiumMg is number && data.sodiumMg >= 0 && data.sodiumMg <= 20000 &&
+      data.costBrl is number && data.costBrl >= 0 && data.costBrl <= 5000 &&
+      data.createdAt is timestamp;
+    }
+
+    function isValidEconomyEntry(data, userId) {
+      return data.keys().hasAll([
+        'userId', 'type', 'itemName', 'category', 'amountBrl', 'quantity', 'unit', 'date', 'notes', 'createdAt'
+      ]) && data.keys().hasOnly([
+        'userId', 'type', 'itemName', 'category', 'amountBrl', 'quantity', 'unit', 'date', 'notes', 'createdAt'
+      ]) &&
+      data.userId is string && data.userId == userId &&
+      data.type in ['purchase', 'saved_waste', 'discarded'] &&
+      data.itemName is string && data.itemName.size() >= 1 && data.itemName.size() <= 120 &&
+      data.category is string && data.category.size() <= 40 &&
+      data.amountBrl is number && data.amountBrl >= 0 && data.amountBrl <= 50000 &&
+      data.quantity is number && data.quantity >= 0 && data.quantity <= 100000 &&
+      data.unit is string && data.unit.size() <= 20 &&
+      data.date is string && data.date.size() >= 8 && data.date.size() <= 20 &&
+      data.notes is string && data.notes.size() <= 240 &&
+      data.createdAt is timestamp;
+    }
+
+    function isValidAnalyticsEvent(data) {
+      return data.keys().hasAll(['userId', 'eventName', 'plan', 'metadata', 'createdAt']) &&
+      data.keys().hasOnly(['userId', 'eventName', 'plan', 'metadata', 'createdAt']) &&
+      data.userId is string && data.userId == request.auth.uid && isValidId(data.userId) &&
+      data.eventName in [
+        'signup_started', 'signup_completed', 'first_ingredient_added',
+        'first_recipe_generated', 'free_limit_reached', 'premium_clicked',
+        'checkout_started', 'payment_approved', 'subscription_canceled',
+        'photo_scan_used', 'meal_plan_generated', 'ai_error'
+      ] &&
+      data.plan in ['free', 'premium'] &&
+      data.metadata is string && data.metadata.size() <= 400 &&
+      data.createdAt is timestamp;
+    }
+
+    function isValidAppConfig(data) {
+      return data.keys().hasAll([
+        'freeMaxIngredients', 'freeWeeklyRecipes', 'freeHistoryLimit',
+        'premiumPriceBrl', 'premiumDailyAiCap', 'enablePhotoRecognition',
+        'enableWeeklyPlanner', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'freeMaxIngredients', 'freeWeeklyRecipes', 'freeHistoryLimit',
+        'premiumPriceBrl', 'premiumDailyAiCap', 'enablePhotoRecognition',
+        'enableWeeklyPlanner', 'updatedAt'
+      ]) &&
+      data.freeMaxIngredients is number && data.freeMaxIngredients >= 1 && data.freeMaxIngredients <= 500 &&
+      data.freeWeeklyRecipes is number && data.freeWeeklyRecipes >= 1 && data.freeWeeklyRecipes <= 100 &&
+      data.freeHistoryLimit is number && data.freeHistoryLimit >= 1 && data.freeHistoryLimit <= 100 &&
+      data.premiumPriceBrl is number && data.premiumPriceBrl >= 1 && data.premiumPriceBrl <= 9999 &&
+      data.premiumDailyAiCap is number && data.premiumDailyAiCap >= 1 && data.premiumDailyAiCap <= 1000 &&
+      data.enablePhotoRecognition is bool &&
+      data.enableWeeklyPlanner is bool &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidAdminRecord(data, adminUid) {
+      return data.keys().hasAll(['uid', 'email', 'grantedAt']) &&
+      data.keys().hasOnly(['uid', 'email', 'grantedAt']) &&
+      data.uid is string && data.uid == adminUid && isValidId(data.uid) &&
+      data.email is string && data.email.size() >= 3 && data.email.size() <= 254 &&
+      data.grantedAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    // 1. Users (Strict PII & Health Data Isolation)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+
+      allow create: if isValidId(userId) && isOwner(userId) &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        incoming().plan == 'free' &&
+        incoming().role == 'user' &&
+        incoming().subscriptionStatus == 'none' &&
+        incoming().subscriptionProvider == 'none' &&
+        incoming().weeklyRecipesCount == 0;
+
+      allow update: if isValidId(userId) && isValidUserProfile(incoming(), userId) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() || (
+            isOwner(userId) && (
+              // Action: Update Profile, Nutrition Preferences & LGPD Consent
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'displayName', 'age', 'heightCm', 'weightKg', 'goal', 'activityLevel',
+                'mealsPerDay', 'weeklyBudgetBrl', 'monthlyBudgetBrl', 'restrictions',
+                'allergies', 'dislikes', 'favoriteIngredients', 'onboardingCompleted',
+                'lgpdConsentAt', 'analyticsConsent', 'updatedAt'
+              ]) ||
+              // Action: Track Weekly Recipe Usage Counter (cannot decrement within same week)
+              (incoming().diff(existing()).affectedKeys().hasOnly([
+                'weeklyRecipesCount', 'weeklyRecipesResetAt', 'updatedAt'
+              ]) && (
+                (incoming().weeklyRecipesResetAt == existing().weeklyRecipesResetAt &&
+                 incoming().weeklyRecipesCount >= existing().weeklyRecipesCount) ||
+                (incoming().weeklyRecipesResetAt != existing().weeklyRecipesResetAt &&
+                 incoming().weeklyRecipesCount <= 1)
+              ))
+            )
+          )
+        );
+
+      allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
+
+      // 2. Smart Pantry Subcollection (Master Gate)
+      match /pantry/{itemId} {
+        allow get: if isValidId(userId) && isValidId(itemId) && (isOwner(userId) || isAdmin());
+        allow list: if (isOwner(userId) && resource.data.userId == request.auth.uid) || isAdmin();
+
+        allow create: if isValidId(userId) && isValidId(itemId) && isOwner(userId) &&
+          isValidPantryItem(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExists(userId);
+
+        allow update: if isValidId(userId) && isValidId(itemId) &&
+          isValidPantryItem(incoming(), userId) &&
+          incoming().userId == existing().userId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() || (
+              isOwner(userId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'name', 'tacoKey', 'category', 'quantity', 'unit', 'minThreshold',
+                'purchasePriceBrl', 'priceUnitQty', 'expiryDate', 'storageLocation',
+                'status', 'updatedAt'
+              ]) &&
+              userExists(userId)
+            )
+          );
+
+        allow delete: if isValidId(userId) && isValidId(itemId) && (isOwner(userId) || isAdmin());
+      }
+
+      // 3. Recipes Subcollection (Master Gate)
+      match /recipes/{recipeId} {
+        allow get: if isValidId(userId) && isValidId(recipeId) && (isOwner(userId) || isAdmin());
+        allow list: if (isOwner(userId) && resource.data.userId == request.auth.uid) || isAdmin();
+
+        allow create: if isValidId(userId) && isValidId(recipeId) && isOwner(userId) &&
+          isValidRecipe(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExists(userId);
+
+        allow update: if isValidId(userId) && isValidId(recipeId) &&
+          isValidRecipe(incoming(), userId) &&
+          incoming().userId == existing().userId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() || (
+              isOwner(userId) && (
+                // Action: Favorite / Rate / Mark Cooked
+                incoming().diff(existing()).affectedKeys().hasOnly([
+                  'isFavorite', 'timesCooked', 'rating', 'lastCookedAt', 'updatedAt'
+                ]) ||
+                // Action: Adjust Servings
+                incoming().diff(existing()).affectedKeys().hasOnly([
+                  'servings', 'totalCostBrl', 'updatedAt'
+                ])
+              ) && userExists(userId)
+            )
+          );
+
+        allow delete: if isValidId(userId) && isValidId(recipeId) && (isOwner(userId) || isAdmin());
+      }
+
+      // 4. Weekly Meal Plans Subcollection (Master Gate)
+      match /mealPlans/{planId} {
+        allow get: if isValidId(userId) && isValidId(planId) && (isOwner(userId) || isAdmin());
+        allow list: if (isOwner(userId) && resource.data.userId == request.auth.uid) || isAdmin();
+
+        allow create: if isValidId(userId) && isValidId(planId) && isOwner(userId) &&
+          isValidMealPlan(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExists(userId);
+
+        allow update: if isValidId(userId) && isValidId(planId) &&
+          isValidMealPlan(incoming(), userId) &&
+          incoming().userId == existing().userId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() || (
+              isOwner(userId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'servings', 'days', 'totalEstimatedCostBrl', 'updatedAt'
+              ]) && userExists(userId)
+            )
+          );
+
+        allow delete: if isValidId(userId) && isValidId(planId) && (isOwner(userId) || isAdmin());
+      }
+
+      // 5. Shopping List Subcollection (Master Gate)
+      match /shoppingList/{itemId} {
+        allow get: if isValidId(userId) && isValidId(itemId) && (isOwner(userId) || isAdmin());
+        allow list: if (isOwner(userId) && resource.data.userId == request.auth.uid) || isAdmin();
+
+        allow create: if isValidId(userId) && isValidId(itemId) && isOwner(userId) &&
+          isValidShoppingItem(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          userExists(userId);
+
+        allow update: if isValidId(userId) && isValidId(itemId) &&
+          isValidShoppingItem(incoming(), userId) &&
+          incoming().userId == existing().userId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() || (
+              isOwner(userId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'name', 'category', 'quantity', 'unit', 'estimatedPriceBrl',
+                'priceSource', 'checked', 'updatedAt'
+              ]) && userExists(userId)
+            )
+          );
+
+        allow delete: if isValidId(userId) && isValidId(itemId) && (isOwner(userId) || isAdmin());
+      }
+
+      // 6. Nutrition Logs Subcollection (Master Gate)
+      match /nutritionLogs/{logId} {
+        allow get: if isValidId(userId) && isValidId(logId) && (isOwner(userId) || isAdmin());
+        allow list: if (isOwner(userId) && resource.data.userId == request.auth.uid) || isAdmin();
+
+        allow create: if isValidId(userId) && isValidId(logId) && isOwner(userId) &&
+          isValidNutritionLog(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          userExists(userId);
+
+        allow delete: if isValidId(userId) && isValidId(logId) && (isOwner(userId) || isAdmin());
+      }
+
+      // 7. Purchases & Economy/Waste Entries Subcollection (Master Gate)
+      match /purchases/{purchaseId} {
+        allow get: if isValidId(userId) && isValidId(purchaseId) && (isOwner(userId) || isAdmin());
+        allow list: if (isOwner(userId) && resource.data.userId == request.auth.uid) || isAdmin();
+
+        allow create: if isValidId(userId) && isValidId(purchaseId) && isOwner(userId) &&
+          isValidEconomyEntry(incoming(), userId) &&
+          incoming().createdAt == request.time &&
+          userExists(userId);
+
+        allow delete: if isValidId(userId) && isValidId(purchaseId) && (isOwner(userId) || isAdmin());
+      }
+    }
+
+    // 8. Analytics & Conversion Events (Write-Own, Admin-Read)
+    match /analyticsEvents/{eventId} {
+      allow get: if isValidId(eventId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(eventId) && isVerified() &&
+        isValidAnalyticsEvent(incoming()) &&
+        incoming().createdAt == request.time;
+    }
+
+    // 9. Global App Config (Read-Verified, Admin-Write)
+    match /appConfig/{configId} {
+      allow get: if isValidId(configId) && isSignedIn();
+      allow create, update: if isValidId(configId) && isAdmin() &&
+        isValidAppConfig(incoming()) &&
+        incoming().updatedAt == request.time;
+    }
+
+    // 10. Admin Registry (Admin-Only)
+    match /admins/{adminUid} {
+      allow get: if isValidId(adminUid) && (isAdmin() || (isVerified() && request.auth.uid == adminUid));
+      allow list: if isAdmin();
+      allow create: if isValidId(adminUid) && isAdmin() &&
+        isValidAdminRecord(incoming(), adminUid) &&
+        incoming().grantedAt == request.time;
+      allow delete: if isValidId(adminUid) && isAdmin();
+    }
+  }
+}

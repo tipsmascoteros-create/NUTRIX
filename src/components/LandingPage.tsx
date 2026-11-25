@@ -195,17 +195,17 @@ export function LandingPage({
             </a>
           </nav>
 
-          <div className="flex items-center gap-4 shrink-0">
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
             <button
               type="button"
               onClick={onOpenLogin}
-              className="hidden sm:inline-block text-sm font-medium text-[#173D32] hover:underline whitespace-nowrap shrink-0"
+              className="text-sm font-semibold text-[#173D32] hover:underline whitespace-nowrap shrink-0"
             >
               Entrar
             </button>
             <a
               href="#planos"
-              className="px-4 py-2 rounded-xl bg-[#173D32] text-white text-sm font-semibold hover:bg-[#0F2B23] transition-colors whitespace-nowrap shrink-0"
+              className="px-3.5 sm:px-4 py-2 rounded-xl bg-[#173D32] text-white text-xs sm:text-sm font-semibold hover:bg-[#0F2B23] transition-colors whitespace-nowrap shrink-0"
             >
               Começar agora
             </a>
@@ -214,15 +214,24 @@ export function LandingPage({
       </header>
 
       {/* SEÇÃO 1 — HERO */}
-      <section id="inicio" className="max-w-7xl mx-auto px-5 sm:px-8 pt-12 pb-14 lg:pt-20 lg:pb-20">
-        <div className="max-w-3xl mx-auto text-center flex flex-col items-center">
-          <p className="text-sm font-medium text-[#173D32] mb-4">
+      <section id="inicio" className="max-w-7xl mx-auto px-5 sm:px-8 pt-5 pb-12 lg:pt-8 lg:pb-16">
+        <div className="max-w-4xl mx-auto text-center flex flex-col items-center">
+          <p className="text-sm font-medium text-[#173D32] mb-2.5">
             Sua alimentação, mais inteligente.
           </p>
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-[3.5rem] font-bold tracking-tight text-[#111B17] leading-[1.08] text-balance">
-            Descubra o que preparar, coma melhor e economize usando os ingredientes que você já tem.
+          <h1 className="font-display text-3xl sm:text-4xl lg:text-[2.85rem] font-bold tracking-tight text-[#111B17] leading-[1.12] text-balance max-w-3xl">
+            Descubra o que preparar, coma melhor e economize usando os ingredientes que você já tem
           </h1>
-          <p className="mt-6 text-base sm:text-lg text-[#455750] leading-relaxed max-w-2xl">
+          <div className="mt-7 w-full max-w-3xl overflow-hidden rounded-2xl border border-[#DCE4DF] bg-white">
+            <img
+              src="https://i.postimg.cc/7hYYRmMH/Diseno-sin-titulo-2026-11-25T085727-460-(1).png"
+              alt="Prévia do NUTRIX organizando sua alimentação, receitas e economia doméstica"
+              referrerPolicy="no-referrer"
+              loading="eager"
+              className="w-full h-auto block"
+            />
+          </div>
+          <p className="mt-7 text-base sm:text-lg text-[#455750] leading-relaxed max-w-2xl">
             Com o NUTRIX,{' '}
             <strong className="font-bold text-[#111B17]">
               você transforma os alimentos que já tem em casa em refeições equilibradas

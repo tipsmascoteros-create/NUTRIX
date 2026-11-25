@@ -373,12 +373,17 @@ export function AppShowcaseCarousel() {
   };
 
   return (
-    <div className="mt-8 mb-14">
+    <div>
       {/* Controls Bar */}
       <div className="max-w-7xl mx-auto px-5 sm:px-8 mb-5 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs sm:text-sm text-white/80">
-          Veja o NUTRIX por dentro — passe o mouse ou toque em qualquer tela para ampliar.
-        </p>
+        <div className="max-w-2xl">
+          <p className="font-display text-xl sm:text-2xl font-bold text-white leading-tight">
+            Veja o NUTRIX por dentro
+          </p>
+          <p className="font-sans text-sm sm:text-base font-normal text-white/85 leading-tight mt-0.5">
+            (passe o mouse ou toque em qualquer tela para ampliar).
+          </p>
+        </div>
 
         <div className="flex items-center gap-2 shrink-0">
           <button

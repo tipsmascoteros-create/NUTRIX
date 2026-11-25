@@ -231,7 +231,7 @@ export function LandingPage({
               className="w-full h-auto block"
             />
           </div>
-          <p className="mt-7 text-base sm:text-lg text-[#455750] leading-relaxed max-w-2xl">
+          <p className="mt-6 text-base sm:text-lg text-[#455750] leading-[1.35] max-w-2xl">
             Com o NUTRIX,{' '}
             <strong className="font-bold text-[#111B17]">
               você transforma os alimentos que já tem em casa em refeições equilibradas
@@ -279,8 +279,8 @@ export function LandingPage({
       </section>
 
       {/* SEÇÃO 3 — APRESENTAÇÃO DA SOLUÇÃO */}
-      <section id="recursos" className="max-w-7xl mx-auto px-5 sm:px-8 py-16 lg:py-24">
-        <div className="max-w-2xl mb-12">
+      <section id="recursos" className="max-w-7xl mx-auto px-5 sm:px-8 pt-14 pb-12 lg:pt-20 lg:pb-16">
+        <div className="max-w-2xl mb-10">
           <p className="text-xs font-medium text-[#173D32] mb-2">Cinco pilares integrados</p>
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-[#111B17] text-balance">
             Conheça o NUTRIX: sua cozinha trabalhando com inteligência.
@@ -291,49 +291,37 @@ export function LandingPage({
           </p>
         </div>
 
-        {/* Asymmetric Bento Showcase */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-7 bg-white border border-[#DCE4DF] rounded-2xl overflow-hidden flex flex-col">
+        {/* Showcase Principal */}
+        <div className="bg-white border border-[#DCE4DF] rounded-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 items-stretch">
+          <div className="lg:col-span-6">
             <FoodImage
               imageKey="pantry"
               alt="Geladeira organizada para reconhecimento inteligente de ingredientes"
-              className="w-full h-64 sm:h-72 object-cover"
+              className="w-full h-64 sm:h-72 lg:h-full object-cover"
             />
-            <div className="p-6 sm:p-8 flex-1 flex flex-col justify-between">
-              <div>
-                <p className="text-xs text-[#52635B]">Despensa Inteligente · Zero Desperdício</p>
-                <h3 className="font-display text-2xl font-semibold text-[#111B17] mt-1.5">
-                  Controle o que tem em casa: manualmente ou por fotografia
-                </h3>
-                <p className="text-sm text-[#455750] mt-2 leading-relaxed">
-                  Cadastre quantidades, preços pagos e validades. O NUTRIX destaca automaticamente o
-                  que precisa ser consumido primeiro e sugere receitas antes que o alimento estrague.
-                </p>
-              </div>
-            </div>
           </div>
-
-          <div className="lg:col-span-5 bg-[#173D32] text-white rounded-2xl overflow-hidden flex flex-col justify-between">
-            <FoodImage
-              imageKey="frango"
-              alt="Prato brasileiro equilibrado com frango, arroz com cenoura e brócolis"
-              className="w-full h-56 object-cover"
-            />
-            <div className="p-6 sm:p-8">
-              <p className="text-xs text-[#C3F28B]">Chef · Nutrição detalhada</p>
-              <h3 className="font-display text-2xl font-semibold mt-1.5">
-                Receitas prontas com calorias, macros e custo por porção
-              </h3>
-              <p className="text-sm text-white/80 mt-2 leading-relaxed">
-                Filtre por até 15 minutos, alta proteína, econômicas, sem lactose, sem glúten ou
-                aproveitamento de sobras — sempre respeitando suas alergias.
-              </p>
-            </div>
+          <div className="lg:col-span-6 p-6 sm:p-10 flex flex-col justify-center">
+            <p className="text-xs text-[#52635B]">Despensa Inteligente · Zero Desperdício</p>
+            <h3 className="font-display text-2xl sm:text-3xl font-semibold text-[#111B17] mt-1.5 text-balance">
+              Controle o que tem em casa: manualmente ou por fotografia
+            </h3>
+            <p className="text-sm sm:text-base text-[#455750] mt-3 leading-relaxed">
+              Cadastre quantidades, preços pagos e validades. O NUTRIX destaca automaticamente o que
+              precisa ser consumido primeiro e sugere receitas antes que o alimento estrague.
+            </p>
           </div>
         </div>
+      </section>
 
-        {/* SEÇÃO 4 — DIFERENCIAIS (9 pilares em grid editorial) */}
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
+      {/* SEÇÃO 4 — PRÉVIA DO APP POR DENTRO (CARROSSEL DINÂMICO) */}
+      <section id="como-funciona" className="bg-[#173D32] text-white pt-6 pb-10 lg:pt-8 lg:pb-12 overflow-hidden">
+        {/* Carrossel horizontal responsivo com telas reais do NUTRIX por dentro */}
+        <AppShowcaseCarousel />
+      </section>
+
+      {/* SEÇÃO 5 — DIFERENCIAIS (9 pilares em grid editorial) */}
+      <section className="max-w-7xl mx-auto px-5 sm:px-8 pt-14 pb-8 lg:pt-20 lg:pb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {DIFFERENTIATORS.map((item) => (
             <div key={item.num} className="space-y-2">
               <p className="font-mono text-xs text-[#173D32] font-semibold">{item.num}</p>
@@ -344,59 +332,14 @@ export function LandingPage({
         </div>
       </section>
 
-      {/* SEÇÃO 5 — COMO FUNCIONA */}
-      <section id="como-funciona" className="bg-[#173D32] text-white py-16 lg:py-24 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-5 sm:px-8">
-          <div className="max-w-2xl">
-            <p className="text-xs font-medium text-[#C3F28B] mb-2">Simples desde o primeiro minuto</p>
-            <h2 className="font-display text-3xl sm:text-4xl font-bold text-balance">
-              Como o NUTRIX organiza sua rotina em três etapas
-            </h2>
-          </div>
-        </div>
-
-        {/* Carrossel horizontal responsivo com telas reais do NUTRIX por dentro */}
-        <AppShowcaseCarousel />
-
-        <div className="max-w-7xl mx-auto px-5 sm:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                step: '01',
-                title: 'Informe os alimentos que você tem',
-                desc: 'Adicione manualmente com busca inteligente de ingredientes ou fotografe sua geladeira no Premium.',
-              },
-              {
-                step: '02',
-                title: 'Conte suas preferências e objetivos',
-                desc: 'Informe alergias, restrições, orçamento semanal em reais e se deseja mais proteína, equilíbrio ou economia.',
-              },
-              {
-                step: '03',
-                title: 'Receba sugestões, planeje e economize',
-                desc: 'Gere receitas personalizadas, monte o cardápio da semana e leve uma lista de compras enxuta ao supermercado.',
-              },
-            ].map((item) => (
-              <div key={item.step} className="border-t border-white/20 pt-6">
-                <span className="font-mono text-2xl font-semibold text-[#C3F28B] tabular-nums">
-                  {item.step}
-                </span>
-                <h3 className="font-display text-xl font-semibold mt-3">{item.title}</h3>
-                <p className="text-sm text-white/80 mt-2 leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* SEÇÃO 6 — DEMONSTRAÇÃO INTERATIVA REAL */}
-      <section id="demonstracao" className="max-w-7xl mx-auto px-5 sm:px-8 py-16 lg:py-24">
+      <section id="demonstracao" className="max-w-7xl mx-auto px-5 sm:px-8 py-14 lg:py-20">
         <div className="max-w-2xl mb-10">
           <p className="text-xs font-medium text-[#173D32] mb-2">Simulação interativa em tempo real</p>
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-[#111B17] text-balance">
             Veja o NUTRIX em ação com ingredientes comuns
           </h2>
-          <p className="mt-3 text-base text-[#455750]">
+          <p className="mt-2.5 text-base text-[#455750] leading-[1.32]">
             Ative ou desative ingredientes abaixo e ajuste as porções para ver o cálculo nutricional
             por porção e o custo proporcional baseado em valores de exemplo.
           </p>
@@ -549,9 +492,15 @@ export function LandingPage({
             <h2 className="font-display text-3xl sm:text-4xl font-bold text-[#111B17] text-balance">
               Escolha o plano ideal para a sua cozinha
             </h2>
-            <p className="mt-3 text-base text-[#455750]">
-              Organize sua rotina a partir de menos de R$ 0,65 por dia no plano Básico ou libere
-              toda a automação do NUTRIX Premium por menos de R$ 1,25 por dia.
+            <p className="mt-3 text-base text-[#455750] leading-snug">
+              Organize sua rotina a partir de{' '}
+              <strong className="font-bold text-[#111B17]">
+                menos de R$&nbsp;0,65 por dia no plano Básico
+              </strong>{' '}
+              ou libere toda a automação do{' '}
+              <strong className="font-bold text-[#111B17]">
+                NUTRIX Premium por menos de R$&nbsp;1,25 por dia.
+              </strong>
             </p>
           </div>
 

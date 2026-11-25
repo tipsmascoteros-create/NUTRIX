@@ -256,22 +256,22 @@ export function LandingPage({
       </section>
 
       {/* SEÇÃO 2 — IDENTIFICAÇÃO DO PROBLEMA */}
-      <section className="bg-white border-y border-[#E1E8E4] py-16 lg:py-24">
+      <section className="bg-white border-y border-[#E1E8E4] py-10 lg:py-16">
         <div className="max-w-7xl mx-auto px-5 sm:px-8">
           <div className="max-w-2xl">
-            <p className="text-xs font-medium text-[#52635B] mb-2">O desafio na cozinha brasileira</p>
-            <h2 className="font-display text-3xl sm:text-4xl font-bold text-[#111B17] text-balance">
+            <p className="text-xs font-medium text-[#52635B] mb-1.5">O desafio na cozinha brasileira</p>
+            <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-[#111B17] text-balance">
               Você também passa por isso todos os dias?
             </h2>
           </div>
 
-          <div className="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3">
             {PROBLEMS.map((problem, idx) => (
-              <div key={problem} className="pt-5 border-t border-[#E1E8E4]">
-                <span className="font-mono text-xs text-[#52635B] tabular-nums">
+              <div key={problem} className="pt-3 border-t border-[#E1E8E4] flex items-baseline gap-3">
+                <span className="font-mono text-xs font-semibold text-[#173D32] tabular-nums shrink-0">
                   0{idx + 1}
                 </span>
-                <p className="mt-2 text-base text-[#1E2D27] leading-relaxed">{problem}</p>
+                <p className="text-sm sm:text-[15px] text-[#1E2D27] leading-snug">{problem}</p>
               </div>
             ))}
           </div>
@@ -303,7 +303,7 @@ export function LandingPage({
               <div>
                 <p className="text-xs text-[#52635B]">Despensa Inteligente · Zero Desperdício</p>
                 <h3 className="font-display text-2xl font-semibold text-[#111B17] mt-1.5">
-                  Controle o que tem em casa — manualmente ou por fotografia
+                  Controle o que tem em casa: manualmente ou por fotografia
                 </h3>
                 <p className="text-sm text-[#455750] mt-2 leading-relaxed">
                   Cadastre quantidades, preços pagos e validades. O NUTRIX destaca automaticamente o

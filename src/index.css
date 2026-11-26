@@ -50,15 +50,6 @@
   animation: nutrix-marquee 42s linear infinite;
 }
 
-.nutrix-marquee-track:hover,
-.nutrix-marquee-track:focus-within {
-  animation-play-state: paused;
-}
-
-.nutrix-marquee-paused {
-  animation-play-state: paused !important;
-}
-
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

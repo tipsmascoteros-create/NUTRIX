@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import Stripe from 'stripe';
+import type Stripe from 'stripe';
 import type {
   EntitlementStatus,
   PaymentConfigStatus,
@@ -100,10 +100,11 @@ export function getPaymentConfigStatus(): PaymentConfigStatus {
   };
 }
 
-export function getStripeClient(): Stripe | null {
+export async function getStripeClient(): Promise<Stripe | null> {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
-  return new Stripe(key);
+  const { default: StripeCtor } = await import('stripe');
+  return new StripeCtor(key);
 }
 
 export async function createStripeCheckoutSession(params: {
@@ -113,7 +114,7 @@ export async function createStripeCheckoutSession(params: {
   plan?: CheckoutPlanTier;
 }): Promise<{ checkoutUrl: string; sessionId: string }> {
   const plan: CheckoutPlanTier = params.plan === 'basic' ? 'basic' : 'premium';
-  const stripe = getStripeClient();
+  const stripe = await getStripeClient();
   const priceId =
     plan === 'basic' ? process.env.STRIPE_PRICE_ID_BASIC : process.env.STRIPE_PRICE_ID_PREMIUM;
   if (!stripe || !priceId) {
@@ -195,7 +196,7 @@ export async function createMercadoPagoSubscription(params: {
 }
 
 export async function cancelStripeSubscription(subscriptionId: string): Promise<{ status: string }> {
-  const stripe = getStripeClient();
+  const stripe = await getStripeClient();
   if (!stripe) {
     throw new Error('Stripe não configurado no servidor.');
   }
@@ -205,11 +206,11 @@ export async function cancelStripeSubscription(subscriptionId: string): Promise<
   return { status: canceled.status };
 }
 
-export function verifyAndDeduplicateStripeWebhook(
+export async function verifyAndDeduplicateStripeWebhook(
   rawBody: Buffer,
   signature: string | undefined,
-): { duplicate: boolean; event: Stripe.Event } {
-  const stripe = getStripeClient();
+): Promise<{ duplicate: boolean; event: Stripe.Event }> {
+  const stripe = await getStripeClient();
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!stripe || !secret || !signature) {
     throw new Error('Assinatura ou segredo do webhook Stripe ausente.');

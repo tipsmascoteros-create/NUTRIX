@@ -1,11 +1,9 @@
-import 'dotenv/config';
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
-import { getApp, getApps, initializeApp } from 'firebase-admin/app';
-import { getAuth, type DecodedIdToken } from 'firebase-admin/auth';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { nutrixAI } from './aiProvider.ts';
+import { verifyFirebaseIdToken, type VerifiedFirebaseUser } from './firebaseTokenVerifier.ts';
 import {
   cancelStripeSubscription,
   createMercadoPagoSubscription,
@@ -54,16 +52,10 @@ function resolveFirebaseProjectId(): string {
   return DEFAULT_FIREBASE_PROJECT_ID;
 }
 
-// Initialize Firebase Admin ONLY for ID token verification (uses public Google keys, no IAM role needed)
 const firebaseProjectId = resolveFirebaseProjectId();
-if (firebaseProjectId && !getApps().length) {
-  initializeApp({ projectId: firebaseProjectId });
-}
-
-const adminAuth = getApps().length ? getAuth(getApp()) : null;
 
 interface AuthRequest extends Request {
-  user?: DecodedIdToken;
+  user?: VerifiedFirebaseUser;
 }
 
 // Technical daily AI usage safeguard per user (transparent protection against abuse)
@@ -90,13 +82,9 @@ async function requireAuth(req: AuthRequest, res: Response, next: NextFunction) 
     res.status(401).json({ error: 'Sessão não autenticada. Faça login para continuar.' });
     return;
   }
-  if (!adminAuth) {
-    res.status(503).json({ error: 'Serviço de autenticação indisponível no servidor.' });
-    return;
-  }
   const idToken = authHeader.slice(7).trim();
   try {
-    const decoded = await adminAuth.verifyIdToken(idToken);
+    const decoded = await verifyFirebaseIdToken(idToken, firebaseProjectId);
     req.user = decoded;
     next();
   } catch (error) {
@@ -110,11 +98,11 @@ export function createApiApp(): Express {
   app.set('trust proxy', 1);
 
   // Stripe Webhook MUST receive raw body for cryptographic signature validation
-  app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), (req, res) => {
+  app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
     try {
       const sig = req.headers['stripe-signature'];
       const signature = Array.isArray(sig) ? sig[0] : sig;
-      const { duplicate, event } = verifyAndDeduplicateStripeWebhook(req.body as Buffer, signature);
+      const { duplicate, event } = await verifyAndDeduplicateStripeWebhook(req.body as Buffer, signature);
 
       if (duplicate) {
         res.status(200).json({ received: true, duplicate: true });

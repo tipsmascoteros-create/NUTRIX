@@ -1,4 +1,4 @@
-import { GoogleGenAI, ThinkingLevel, Type } from '@google/genai';
+import type { GoogleGenAI } from '@google/genai';
 import { calculateRecipeNutrition, findTacoFood } from '../data/tacoDatabase.ts';
 import type {
   EconomyTipResult,
@@ -136,12 +136,13 @@ function chooseImageKey(title: string, tags: string[]): RecipeImageKey {
 export class GeminiAIProvider implements NutrixAIProvider {
   readonly providerName = 'gemini-4-hydrogen';
 
-  private getClient(): GoogleGenAI {
+  private async getClient() {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY não configurada no servidor.');
     }
-    return new GoogleGenAI({
+    const { GoogleGenAI: GoogleGenAICtor, ThinkingLevel, Type } = await import('@google/genai');
+    const ai: GoogleGenAI = new GoogleGenAICtor({
       apiKey,
       httpOptions: {
         headers: {
@@ -149,10 +150,11 @@ export class GeminiAIProvider implements NutrixAIProvider {
         },
       },
     });
+    return { ai, ThinkingLevel, Type };
   }
 
   async generateRecipes(input: GenerateRecipesInput): Promise<GeneratedRecipePayload[]> {
-    const ai = this.getClient();
+    const { ai, ThinkingLevel, Type } = await this.getClient();
     const availablePantry = input.pantryItems.filter((i) => i.status === 'available' && i.quantity > 0);
     const todayIso = new Date().toISOString().slice(0, 10);
 
@@ -313,7 +315,7 @@ REGRAS OBRIGATÓRIAS:
     base64Data: string,
     mimeType: string,
   ): Promise<{ items: RecognizedIngredient[]; safetyNote: string }> {
-    const ai = this.getClient();
+    const { ai, ThinkingLevel, Type } = await this.getClient();
 
     const response = await withRetry(() =>
       ai.models.generateContent({
@@ -426,7 +428,7 @@ REGRAS DE PRECISÃO:
     servings: number;
     weekKey: string;
   }): Promise<{ days: MealPlanDay[]; totalEstimatedCostBrl: number }> {
-    const ai = this.getClient();
+    const { ai, ThinkingLevel, Type } = await this.getClient();
     const available = input.pantryItems
       .filter((p) => p.status === 'available' && p.quantity > 0)
       .map((p) => `${p.name} (${p.quantity} ${p.unit}${p.expiryDate ? `, vence ${p.expiryDate}` : ''})`)
@@ -551,7 +553,7 @@ Informe os principais ingredientes com peso estimado em gramas por porção em c
     profile: Partial<UserProfile>;
     spentThisWeekBrl: number;
   }): Promise<EconomyTipResult> {
-    const ai = this.getClient();
+    const { ai, ThinkingLevel, Type } = await this.getClient();
     const itemsList = input.pantryItems
       .filter((p) => p.status === 'available')
       .map((p) => `${p.name} (${p.quantity} ${p.unit}, preço pago: ${p.purchasePriceBrl > 0 ? `R$ ${p.purchasePriceBrl}` : 'não informado'}, validade: ${p.expiryDate || 'não informada'})`)

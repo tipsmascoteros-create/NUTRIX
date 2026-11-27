@@ -54,40 +54,30 @@ const DIFFERENTIATORS = [
     title: 'Descubra o que preparar com o que você já tem',
     desc: 'Encontre sugestões de receitas usando os ingredientes disponíveis na sua geladeira e despensa.',
     highlights: 'Receitas personalizadas, filtros por tempo, preferências e restrições alimentares.',
-    image: '/src/assets/images/nutrix_pillar_recipes_1795728732783.webp',
-    imageAlt: 'Preparo de receita caseira com ingredientes frescos da geladeira e despensa',
   },
   {
     num: '02.',
     title: 'Tenha sua despensa sempre sob controle',
     desc: 'Saiba o que você tem em casa, acompanhe quantidades e receba alertas sobre alimentos próximos do vencimento.',
     highlights: 'Controle de estoque, fotografia de ingredientes e alertas de validade.',
-    image: '/src/assets/images/nutrix_pillar_pantry_1795728734045.webp',
-    imageAlt: 'Despensa organizada com potes de grãos, cereais e cestas de alimentos frescos',
   },
   {
     num: '03.',
     title: 'Entenda melhor o que coloca no prato',
     desc: 'Consulte calorias, proteínas, carboidratos, gorduras, fibras e outros nutrientes das suas receitas.',
     highlights: 'Informações nutricionais e ajuste de porções.',
-    image: '/src/assets/images/nutrix_pillar_nutrition_1795728734450.webp',
-    imageAlt: 'Prato nutritivo e equilibrado com proteína, arroz com cenoura, brócolis, batata-doce e abacate',
   },
   {
     num: '04.',
     title: 'Planeje suas refeições e compras com facilidade',
     desc: 'Organize café da manhã, almoço, lanche e jantar e gere uma lista de compras considerando o que já existe na sua despensa.',
     highlights: 'Planejamento semanal e lista de compras integrada.',
-    image: '/src/assets/images/nutrix_pillar_planner_1795728735763.webp',
-    imageAlt: 'Marmitas de vidro organizadas para a semana ao lado de sacola com vegetais frescos',
   },
   {
     num: '05.',
     title: 'Aproveite melhor seu dinheiro e evite desperdícios',
     desc: 'Acompanhe o custo das refeições, organize seu orçamento e encontre alternativas econômicas para seus ingredientes.',
     highlights: 'Custo por porção, orçamento semanal e sistema Zero Desperdício.',
-    image: '/src/assets/images/nutrix_pillar_economy_1795728736928.webp',
-    imageAlt: 'Cesta de feira com legumes, verduras, ovos e ervas frescas para compras econômicas sem desperdício',
   },
 ];
 
@@ -292,47 +282,28 @@ export function LandingPage({
         <AppShowcaseCarousel />
       </section>
 
-      {/* SEÇÃO 5 — DIFERENCIAIS (5 pilares ilustrados em grid editorial) */}
+      {/* SEÇÃO 5 — DIFERENCIAIS (5 pilares em grid editorial) */}
       <section className="max-w-7xl mx-auto px-5 sm:px-8 pt-12 pb-14 lg:pt-16 lg:pb-20">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-5">
           {DIFFERENTIATORS.map((item, idx) => {
             const isBottomWide = idx >= 3;
             return (
               <article
                 key={item.num}
-                className={`bg-white border border-[#DCE4DF] rounded-2xl overflow-hidden flex flex-col ${
-                  isBottomWide
-                    ? 'lg:col-span-3 lg:flex-row'
-                    : 'lg:col-span-2'
+                className={`bg-white border border-[#DCE4DF] rounded-2xl p-5 sm:p-6 flex flex-col justify-between gap-4 ${
+                  isBottomWide ? 'lg:col-span-3' : 'lg:col-span-2'
                 }`}
               >
-                <div
-                  className={
-                    isBottomWide
-                      ? 'w-full aspect-[16/10] lg:aspect-auto lg:w-[44%] shrink-0 overflow-hidden bg-[#EEF2EF]'
-                      : 'w-full aspect-[16/10] shrink-0 overflow-hidden bg-[#EEF2EF]'
-                  }
-                >
-                  <img
-                    src={item.image}
-                    alt={item.imageAlt}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover block"
-                  />
+                <div className="space-y-2">
+                  <p className="font-mono text-xs text-[#173D32] font-semibold">{item.num}</p>
+                  <h3 className="font-display text-lg font-bold text-[#111B17] leading-snug">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm text-[#455750] leading-snug">{item.desc}</p>
                 </div>
-                <div className="p-5 sm:p-6 flex flex-col justify-between gap-3.5 flex-1">
-                  <div className="space-y-2">
-                    <p className="font-mono text-xs text-[#173D32] font-semibold">{item.num}</p>
-                    <h3 className="font-display text-lg font-bold text-[#111B17] leading-snug">
-                      {item.title}
-                    </h3>
-                    <p className="text-sm text-[#455750] leading-snug">{item.desc}</p>
-                  </div>
-                  <p className="pt-3 border-t border-[#E8EFEA] text-xs font-medium text-[#173D32] leading-snug">
-                    {item.highlights}
-                  </p>
-                </div>
+                <p className="pt-3 border-t border-[#E8EFEA] text-xs font-medium text-[#173D32] leading-snug">
+                  {item.highlights}
+                </p>
               </article>
             );
           })}

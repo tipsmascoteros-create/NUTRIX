@@ -54,7 +54,7 @@ const DIFFERENTIATORS = [
     title: 'Descubra o que preparar com o que você já tem',
     desc: 'Encontre sugestões de receitas usando os ingredientes disponíveis na sua geladeira e despensa.',
     highlights: 'Receitas personalizadas, filtros por tempo, preferências e restrições alimentares.',
-    image: '/src/assets/images/nutrix_pillar_recipes_1795728732783.jpg',
+    image: '/src/assets/images/nutrix_pillar_recipes_1795728732783.webp',
     imageAlt: 'Preparo de receita caseira com ingredientes frescos da geladeira e despensa',
   },
   {
@@ -62,7 +62,7 @@ const DIFFERENTIATORS = [
     title: 'Tenha sua despensa sempre sob controle',
     desc: 'Saiba o que você tem em casa, acompanhe quantidades e receba alertas sobre alimentos próximos do vencimento.',
     highlights: 'Controle de estoque, fotografia de ingredientes e alertas de validade.',
-    image: '/src/assets/images/nutrix_pillar_pantry_1795728734045.jpg',
+    image: '/src/assets/images/nutrix_pillar_pantry_1795728734045.webp',
     imageAlt: 'Despensa organizada com potes de grãos, cereais e cestas de alimentos frescos',
   },
   {
@@ -70,7 +70,7 @@ const DIFFERENTIATORS = [
     title: 'Entenda melhor o que coloca no prato',
     desc: 'Consulte calorias, proteínas, carboidratos, gorduras, fibras e outros nutrientes das suas receitas.',
     highlights: 'Informações nutricionais e ajuste de porções.',
-    image: '/src/assets/images/nutrix_pillar_nutrition_1795728734450.jpg',
+    image: '/src/assets/images/nutrix_pillar_nutrition_1795728734450.webp',
     imageAlt: 'Prato nutritivo e equilibrado com proteína, arroz com cenoura, brócolis, batata-doce e abacate',
   },
   {
@@ -78,7 +78,7 @@ const DIFFERENTIATORS = [
     title: 'Planeje suas refeições e compras com facilidade',
     desc: 'Organize café da manhã, almoço, lanche e jantar e gere uma lista de compras considerando o que já existe na sua despensa.',
     highlights: 'Planejamento semanal e lista de compras integrada.',
-    image: '/src/assets/images/nutrix_pillar_planner_1795728735763.jpg',
+    image: '/src/assets/images/nutrix_pillar_planner_1795728735763.webp',
     imageAlt: 'Marmitas de vidro organizadas para a semana ao lado de sacola com vegetais frescos',
   },
   {
@@ -86,7 +86,7 @@ const DIFFERENTIATORS = [
     title: 'Aproveite melhor seu dinheiro e evite desperdícios',
     desc: 'Acompanhe o custo das refeições, organize seu orçamento e encontre alternativas econômicas para seus ingredientes.',
     highlights: 'Custo por porção, orçamento semanal e sistema Zero Desperdício.',
-    image: '/src/assets/images/nutrix_pillar_economy_1795728736928.jpg',
+    image: '/src/assets/images/nutrix_pillar_economy_1795728736928.webp',
     imageAlt: 'Cesta de feira com legumes, verduras, ovos e ervas frescas para compras econômicas sem desperdício',
   },
 ];

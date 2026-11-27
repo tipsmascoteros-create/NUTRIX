@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { createApiApp } from './apiApp.ts';
+import { createApiApp } from '../src/server/apiApp.js';
 
 let cachedApp: ReturnType<typeof createApiApp> | null = null;
 

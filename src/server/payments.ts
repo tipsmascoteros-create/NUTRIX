@@ -7,7 +7,7 @@ import type {
   PaymentConfigStatus,
   PlanType,
   ServerEntitlementResponse,
-} from '../types/nutrix.ts';
+} from '../types/nutrix.js';
 
 const BASIC_PRICE_BRL = 19;
 const PREMIUM_PRICE_BRL = 37;

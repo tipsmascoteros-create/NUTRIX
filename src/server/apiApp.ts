@@ -2,8 +2,8 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { nutrixAI } from './aiProvider.ts';
-import { verifyFirebaseIdToken, type VerifiedFirebaseUser } from './firebaseTokenVerifier.ts';
+import { nutrixAI } from './aiProvider.js';
+import { verifyFirebaseIdToken, type VerifiedFirebaseUser } from './firebaseTokenVerifier.js';
 import {
   cancelStripeSubscription,
   createMercadoPagoSubscription,
@@ -17,7 +17,7 @@ import {
   verifyAndDeduplicateStripeWebhook,
   verifyHotmartWebhookToken,
   verifyMercadoPagoWebhookSignature,
-} from './payments.ts';
+} from './payments.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

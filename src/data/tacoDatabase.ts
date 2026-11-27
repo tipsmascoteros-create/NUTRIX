@@ -1,4 +1,4 @@
-import type { MeasureUnit, NutritionBreakdown, PantryCategory, RecipeIngredient } from '../types/nutrix.ts';
+import type { MeasureUnit, NutritionBreakdown, PantryCategory, RecipeIngredient } from '../types/nutrix.js';
 
 export interface TacoFoodEntry {
   key: string;

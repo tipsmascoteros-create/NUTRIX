@@ -1,5 +1,5 @@
 import type { GoogleGenAI } from '@google/genai';
-import { calculateRecipeNutrition, findTacoFood } from '../data/tacoDatabase.ts';
+import { calculateRecipeNutrition, findTacoFood } from '../data/tacoDatabase.js';
 import type {
   EconomyTipResult,
   MealPlanDay,
@@ -9,7 +9,7 @@ import type {
   RecognizedIngredient,
   SavedRecipe,
   UserProfile,
-} from '../types/nutrix.ts';
+} from '../types/nutrix.js';
 
 export interface GenerateRecipesInput {
   pantryItems: PantryItem[];

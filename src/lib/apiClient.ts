@@ -19,10 +19,18 @@ export async function apiFetch<T>(url: string, options: RequestInit = {}): Promi
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    let fallbackMessage = `Erro na requisição (${res.status}).`;
+    if (res.status === 405) {
+      fallbackMessage =
+        'Rota da API não disponível neste servidor (405). Atualize o deploy na Vercel com a pasta /api e configure GEMINI_API_KEY nas variáveis de ambiente.';
+    } else if (res.status === 504) {
+      fallbackMessage =
+        'O servidor demorou para responder (504). Tente novamente em alguns segundos.';
+    }
     const message =
       typeof data?.error === 'string' && data.error
         ? data.error
-        : `Erro na requisição (${res.status}).`;
+        : fallbackMessage;
     throw new Error(message);
   }
   return data as T;

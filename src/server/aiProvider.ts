@@ -69,6 +69,15 @@ function normalizeName(str: string): string {
     .trim();
 }
 
+function parseModelJson<T>(raw: string | undefined, fallback: string): T {
+  const cleaned = (raw ?? fallback)
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+  return JSON.parse(cleaned || fallback) as T;
+}
+
 function computeIngredientCostFromUserPantry(
   ingName: string,
   gramsEstimate: number,
@@ -229,8 +238,7 @@ REGRAS OBRIGATÓRIAS:
       }),
     );
 
-    const rawText = (response.text ?? '[]').trim();
-    const parsed = JSON.parse(rawText) as Array<{
+    const parsed = parseModelJson<Array<{
       title: string;
       description: string;
       prepTimeMin: number;
@@ -240,7 +248,7 @@ REGRAS OBRIGATÓRIAS:
       steps: string[];
       substitutions: string[];
       sideDishes: string[];
-    }>;
+    }>>(response.text, '[]');
 
     return parsed.slice(0, 3).map((rec) => {
       const servings = Math.max(1, Math.min(24, Number(input.servings) || 2));
@@ -368,10 +376,10 @@ REGRAS DE PRECISÃO:
       }),
     );
 
-    const parsed = JSON.parse((response.text ?? '{}').trim()) as {
+    const parsed = parseModelJson<{
       items?: RecognizedIngredient[];
       safetyNote?: string;
-    };
+    }>(response.text, '{}');
 
     const validCategories = new Set([
       'carnes',
@@ -479,14 +487,14 @@ Informe os principais ingredientes com peso estimado em gramas por porção em c
       }),
     );
 
-    const rawDays = JSON.parse((response.text ?? '[]').trim()) as Array<{
+    const rawDays = parseModelJson<Array<{
       dayKey: string;
       dayLabel: string;
       breakfast: { title: string; prepTimeMin: number; ingredientsList: Array<{ name: string; gramsEstimate: number }> };
       lunch: { title: string; prepTimeMin: number; ingredientsList: Array<{ name: string; gramsEstimate: number }> };
       snack: { title: string; prepTimeMin: number; ingredientsList: Array<{ name: string; gramsEstimate: number }> };
       dinner: { title: string; prepTimeMin: number; ingredientsList: Array<{ name: string; gramsEstimate: number }> };
-    }>;
+    }>>(response.text, '[]');
 
     const availablePantry = input.pantryItems.filter((i) => i.status === 'available');
     let totalCost = 0;
@@ -590,7 +598,7 @@ REGRAS:
       }),
     );
 
-    return JSON.parse((response.text ?? '{}').trim()) as EconomyTipResult;
+    return parseModelJson<EconomyTipResult>(response.text, '{}');
   }
 }
 

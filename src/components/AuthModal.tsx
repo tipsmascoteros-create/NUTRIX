@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowRight, Lock, Mail, User, X } from 'lucide-react';
 import {
   registerWithEmail,
@@ -31,6 +31,14 @@ export function AuthModal({
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
 
+  useEffect(() => {
+    if (open) {
+      setMode(initialMode);
+      setError('');
+      setInfo('');
+    }
+  }, [open, initialMode]);
+
   if (!open) return null;
 
   const handleGoogle = async () => {
@@ -46,11 +54,22 @@ export function AuthModal({
       onClose();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Não foi possível autenticar com Google.';
-      setError(
-        msg.includes('popup-closed-by-user')
-          ? 'Login cancelado. Clique novamente para entrar com sua conta Google.'
-          : msg,
-      );
+      if (msg.includes('unauthorized-domain')) {
+        const host = typeof window !== 'undefined' ? window.location.hostname : '';
+        setError(
+          `Este domínio (${host}) ainda não está autorizado no Firebase. Adicione "${host}" em Firebase Console → Authentication → Settings → Authorized domains.`,
+        );
+      } else if (msg.includes('popup-blocked')) {
+        setError(
+          'O navegador bloqueou a janela de login do Google. Permita pop-ups para este site e tente novamente.',
+        );
+      } else if (msg.includes('popup-closed-by-user') || msg.includes('cancelled-popup-request')) {
+        setError('Login cancelado. Clique novamente para entrar com sua conta Google.');
+      } else if (msg.includes('network-request-failed')) {
+        setError('Falha de conexão com o serviço de autenticação. Verifique sua internet e tente novamente.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }

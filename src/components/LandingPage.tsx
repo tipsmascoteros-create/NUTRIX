@@ -1,12 +1,66 @@
-import { useState } from 'react';
-import { ArrowRight, Check, ChevronDown } from 'lucide-react';
+import { lazy, Suspense, useState } from 'react';
 import {
   HOTMART_CHECKOUT_URLS,
   trackPlanCheckoutClick,
 } from '../lib/checkoutLinks.ts';
-import { AppShowcaseCarousel } from './AppShowcaseCarousel.tsx';
 import { FoodImage } from './FoodImage.tsx';
 import type { LegalTab } from './LegalModal.tsx';
+
+const AppShowcaseCarousel = lazy(() =>
+  import('./AppShowcaseCarousel.tsx').then((m) => ({ default: m.AppShowcaseCarousel })),
+);
+
+function ArrowRightIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M5 12h14" />
+      <path d="m12 5 7 7-7 7" />
+    </svg>
+  );
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.25}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
 
 interface LandingPageProps {
   onStartBasic: () => void;
@@ -181,6 +235,8 @@ export function LandingPage({
             <img
               src="https://i.postimg.cc/7hYYRmMH/Diseno-sin-titulo-2026-11-25T085727-460-(1).png"
               alt="Prévia do NUTRIX organizando sua alimentação, receitas e economia doméstica"
+              width={768}
+              height={512}
               referrerPolicy="no-referrer"
               loading="eager"
               fetchPriority="high"
@@ -200,7 +256,7 @@ export function LandingPage({
               className="px-6 py-3.5 rounded-xl bg-[#173D32] text-white font-semibold text-sm sm:text-base hover:bg-[#0F2B23] transition-colors inline-flex items-center justify-center gap-2.5 whitespace-nowrap"
             >
               <span>VER PLANOS E COMEÇAR</span>
-              <ArrowRight className="w-4 h-4 text-[#C3F28B]" />
+              <ArrowRightIcon className="w-4 h-4 text-[#C3F28B]" />
             </a>
             <span className="text-xs text-[#52635B]">
               A partir de R$&nbsp;19,00/mês · Cancele quando quiser
@@ -228,10 +284,7 @@ export function LandingPage({
                 key={problem.num}
                 className="pt-3.5 border-t border-[#E1E8E4] flex items-start gap-2.5"
               >
-                <Check
-                  className="w-4 h-4 text-[#173D32] shrink-0 mt-0.5"
-                  aria-hidden="true"
-                />
+                <CheckIcon className="w-4 h-4 text-[#173D32] shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <p className="text-sm sm:text-[15px] font-semibold text-[#111B17] leading-snug">
                     {problem.title}
@@ -280,9 +333,11 @@ export function LandingPage({
       </section>
 
       {/* SEÇÃO 4 — PRÉVIA DO APP POR DENTRO (CARROSSEL DINÂMICO) */}
-      <section id="como-funciona" className="bg-[#173D32] text-white py-7 lg:py-9 overflow-hidden">
+      <section id="como-funciona" className="bg-[#173D32] text-white py-7 lg:py-9 overflow-hidden min-h-[340px]">
         {/* Carrossel horizontal responsivo com telas reais do NUTRIX por dentro */}
-        <AppShowcaseCarousel />
+        <Suspense fallback={<div className="h-[280px]" aria-hidden="true" />}>
+          <AppShowcaseCarousel />
+        </Suspense>
       </section>
 
       {/* SEÇÃO 5 — DIFERENCIAIS (5 pilares em grid editorial) */}
@@ -330,7 +385,7 @@ export function LandingPage({
                 'Fazer compras com mais planejamento e controle.',
               ].map((benefit) => (
                 <li key={benefit} className="flex items-start gap-3 leading-snug">
-                  <Check className="w-5 h-5 text-[#C3F28B] shrink-0 mt-0.5" />
+                  <CheckIcon className="w-5 h-5 text-[#C3F28B] shrink-0 mt-0.5" />
                   <span>{benefit}</span>
                 </li>
               ))}
@@ -391,7 +446,7 @@ export function LandingPage({
                     'Histórico completo das últimas 15 receitas salvas',
                   ].map((feat) => (
                     <li key={feat} className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-[#173D32] shrink-0 mt-0.5" />
+                      <CheckIcon className="w-4 h-4 text-[#173D32] shrink-0 mt-0.5" />
                       <span>{feat}</span>
                     </li>
                   ))}
@@ -435,7 +490,7 @@ export function LandingPage({
                     'Painel Zero Desperdício e memória adaptativa de preferências',
                   ].map((feat) => (
                     <li key={feat} className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-[#C3F28B] shrink-0 mt-0.5" />
+                      <CheckIcon className="w-4 h-4 text-[#C3F28B] shrink-0 mt-0.5" />
                       <span>{feat}</span>
                     </li>
                   ))}
@@ -478,7 +533,7 @@ export function LandingPage({
                   <span className="font-display text-base sm:text-lg font-semibold text-[#111B17]">
                     {item.q}
                   </span>
-                  <ChevronDown
+                  <ChevronDownIcon
                     className={`w-5 h-5 text-[#173D32] shrink-0 transition-transform ${
                       isOpen ? 'rotate-180' : ''
                     }`}
@@ -542,7 +597,7 @@ export function LandingPage({
               className="px-7 py-3.5 rounded-xl bg-[#C3F28B] text-[#173D32] font-bold text-sm sm:text-base hover:bg-[#B1E872] transition-colors inline-flex items-center gap-2.5 whitespace-nowrap"
             >
               <span>QUERO MEU NUTRIX PREMIUM</span>
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRightIcon className="w-4 h-4" />
             </a>
           </div>
         </div>

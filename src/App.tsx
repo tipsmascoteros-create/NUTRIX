@@ -1,9 +1,12 @@
 import { lazy, Suspense, useState } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { LandingPage } from './components/LandingPage.tsx';
-import { LegalModal, type LegalTab } from './components/LegalModal.tsx';
+import type { LegalTab } from './components/LegalModal.tsx';
 
 const AuthenticatedApp = lazy(() => import('./AuthenticatedApp.tsx'));
+const LegalModal = lazy(() =>
+  import('./components/LegalModal.tsx').then((m) => ({ default: m.LegalModal })),
+);
 
 function shouldBootAuthImmediately(): boolean {
   if (typeof window === 'undefined') return false;
@@ -69,7 +72,11 @@ export default function App() {
         }}
         onOpenLegal={(tab) => setLegalTab(tab)}
       />
-      <LegalModal tab={legalTab} onClose={() => setLegalTab(null)} onChangeTab={setLegalTab} />
+      {legalTab !== null && (
+        <Suspense fallback={null}>
+          <LegalModal tab={legalTab} onClose={() => setLegalTab(null)} onChangeTab={setLegalTab} />
+        </Suspense>
+      )}
     </ErrorBoundary>
   );
 }

@@ -56,8 +56,8 @@ export class GeminiProviderError extends Error {
   }
 }
 
-const PRIMARY_MODEL = 'gemini-4-hydrogen';
-const FALLBACK_MODEL = 'gemini-3.1-flash-lite';
+const PRIMARY_MODEL = 'gemini-3.1-flash-lite';
+const FALLBACK_MODEL = 'gemini-4-hydrogen';
 
 function extractUpstreamErrorInfo(error: unknown): { code?: number; status?: string; message: string } {
   const errObj = (error && typeof error === 'object' ? error : {}) as {
@@ -89,11 +89,11 @@ function extractUpstreamErrorInfo(error: unknown): { code?: number; status?: str
 }
 
 function isRetryableOverload(info: { code?: number; status?: string; message: string }): boolean {
-  if (info.code === 503 || info.code === 500 || info.code === 504) return true;
+  if (info.code === 503 || info.code === 500 || info.code === 504 || info.code === 408) return true;
   if (info.status === 'UNAVAILABLE' || info.status === 'INTERNAL' || info.status === 'DEADLINE_EXCEEDED') {
     return true;
   }
-  return /high demand|overloaded|unavailable|temporarily|timeout|econnreset|etimedout|fetch failed/i.test(
+  return /high demand|overloaded|unavailable|temporarily|timeout|timed out|aborted|econnreset|etimedout|fetch failed/i.test(
     info.message,
   );
 }
@@ -138,19 +138,39 @@ function toFriendlyProviderError(error: unknown): GeminiProviderError {
   );
 }
 
-async function callWithFallback<T>(runForModel: (model: string) => Promise<T>): Promise<T> {
-  const attempts: Array<{ model: string; delayAfterMs: number }> = [
-    { model: PRIMARY_MODEL, delayAfterMs: 900 },
-    { model: PRIMARY_MODEL, delayAfterMs: 1400 },
-    { model: FALLBACK_MODEL, delayAfterMs: 1400 },
-    { model: FALLBACK_MODEL, delayAfterMs: 0 },
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(`Request timed out after ${timeoutMs}ms`));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function callWithFallback<T>(
+  runForModel: (model: string, preferFastThinking: boolean) => Promise<T>,
+  preferFastThinking = true,
+): Promise<T> {
+  // Total worst-case budget stays safely under Vercel's 60s maxDuration
+  const attempts: Array<{ model: string; timeoutMs: number; delayAfterMs: number }> = [
+    { model: PRIMARY_MODEL, timeoutMs: 18000, delayAfterMs: 350 },
+    { model: FALLBACK_MODEL, timeoutMs: 22000, delayAfterMs: 350 },
+    { model: PRIMARY_MODEL, timeoutMs: 14000, delayAfterMs: 0 },
   ];
 
   let lastError: unknown;
   for (let i = 0; i < attempts.length; i++) {
-    const { model, delayAfterMs } = attempts[i];
+    const { model, timeoutMs, delayAfterMs } = attempts[i];
     try {
-      return await runForModel(model);
+      const useMinimal = preferFastThinking && model === PRIMARY_MODEL;
+      return await withTimeout(runForModel(model, useMinimal), timeoutMs);
     } catch (error) {
       lastError = error;
       const info = extractUpstreamErrorInfo(error);
@@ -159,11 +179,6 @@ async function callWithFallback<T>(runForModel: (model: string) => Promise<T>): 
 
       if (!retryable && !rateLimited) {
         throw toFriendlyProviderError(error);
-      }
-
-      // If primary model hits rate limit, jump straight to fallback model
-      if (rateLimited && model === PRIMARY_MODEL) {
-        i = 1; // Next iteration will be index 2 (FALLBACK_MODEL)
       }
 
       if (i < attempts.length - 1 && delayAfterMs > 0) {
@@ -248,7 +263,7 @@ function chooseImageKey(title: string, tags: string[]): RecipeImageKey {
 }
 
 export class GeminiAIProvider implements NutrixAIProvider {
-  readonly providerName = 'gemini-4-hydrogen';
+  readonly providerName = PRIMARY_MODEL;
 
   private async getClient() {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -272,18 +287,22 @@ export class GeminiAIProvider implements NutrixAIProvider {
     const availablePantry = input.pantryItems.filter((i) => i.status === 'available' && i.quantity > 0);
     const todayIso = new Date().toISOString().slice(0, 10);
 
-    const expiringItems = availablePantry
+    const sortedPantry = [...availablePantry]
+      .sort((a, b) => (a.expiryDate || '9999-99-99').localeCompare(b.expiryDate || '9999-99-99'))
+      .slice(0, 45);
+
+    const expiringItems = sortedPantry
       .filter((i) => i.expiryDate && i.expiryDate <= new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10))
       .map((i) => `${i.name} (vence em ${i.expiryDate})`);
 
-    const pantrySummary = availablePantry
+    const pantrySummary = sortedPantry
       .map((i) => `${i.name}: ${i.quantity} ${i.unit}${i.expiryDate ? ` (validade: ${i.expiryDate})` : ''}`)
       .join('; ');
 
     const recipeCount = Math.min(3, Math.max(1, input.count ?? 2));
 
     const prompt = `
-Você é o Chef IA do NUTRIX, uma plataforma brasileira de inteligência alimentar.
+Você é o Chef do NUTRIX, uma plataforma brasileira de organização alimentar.
 Gere exatamente ${recipeCount} receitas práticas, saborosas e adaptadas à culinária brasileira cotidiana.
 
 CONTEXTO DO USUÁRIO:
@@ -304,21 +323,23 @@ CONTEXTO DO USUÁRIO:
 - Data atual: ${todayIso}
 
 REGRAS OBRIGATÓRIAS:
-1. Escreva tudo em Português do Brasil (PT-BR) natural e claro.
-2. Para CADA ingrediente, informe "gramsEstimate" realista em gramas correspondente à quantidade total na receita (usaremos esse peso para o cálculo nutricional determinístico na tabela TACO/TBCA).
+1. Escreva tudo em Português do Brasil (PT-BR) natural, direto e objetivo (descrição curta de 1-2 frases e de 4 a 7 passos claros).
+2. Para CADA ingrediente, informe "gramsEstimate" realista em gramas correspondente à quantidade total na receita.
 3. Não invente preços de supermercado nem promessas médicas.
 4. Use unidades brasileiras (g, kg, ml, un, colher de sopa, xícara).
-5. Inclua passo a passo objetivo, substituições econômicas reais e sugestões de acompanhamento.
+5. Inclua até 3 substituições econômicas reais e até 3 sugestões de acompanhamento.
 `.trim();
 
-    const response = await callWithFallback((model) =>
+    const response = await callWithFallback((model, useMinimal) =>
       ai.models.generateContent({
         model,
         contents: prompt,
         config: {
           systemInstruction:
-            'Você é um especialista em gastronomia brasileira cotidiana e organização alimentar. Retorne estritamente JSON válido seguindo o schema solicitado.',
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            'Você é um especialista em gastronomia brasileira cotidiana e organização alimentar. Retorne estritamente JSON válido e objetivo seguindo o schema solicitado.',
+          thinkingConfig: {
+            thinkingLevel: useMinimal ? ThinkingLevel.MINIMAL : ThinkingLevel.LOW,
+          },
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.ARRAY,
@@ -431,19 +452,20 @@ REGRAS OBRIGATÓRIAS:
   ): Promise<{ items: RecognizedIngredient[]; safetyNote: string }> {
     const { ai, ThinkingLevel, Type } = await this.getClient();
 
-    const response = await callWithFallback((model) =>
-      ai.models.generateContent({
-        model,
-        contents: {
-          parts: [
-            {
-              inlineData: {
-                mimeType,
-                data: base64Data,
+    const response = await callWithFallback(
+      (model) =>
+        ai.models.generateContent({
+          model,
+          contents: {
+            parts: [
+              {
+                inlineData: {
+                  mimeType,
+                  data: base64Data,
+                },
               },
-            },
-            {
-              text: `Analise esta fotografia de geladeira, bancada, despensa ou alimentos individuais.
+              {
+                text: `Analise esta fotografia de geladeira, bancada, despensa ou alimentos individuais.
 Identifique SOMENTE ingredientes realmente visíveis na imagem (em Português do Brasil).
 REGRAS DE PRECISÃO:
 1. Não invente itens que não estejam claramente visíveis.
@@ -451,11 +473,11 @@ REGRAS DE PRECISÃO:
 3. Sempre marque "quantityNeedsConfirmation": true se o peso ou quantidade exata não puder ser medida com segurança pela imagem.
 4. Sugira a categoria entre: carnes, frutas, verduras, graos, laticinios, temperos, massas, enlatados, congelados, outros.
 5. Sugira a unidade entre: g, kg, ml, L, un, colher, xicara, pacote.`,
-            },
-          ],
-        },
-        config: {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+              },
+            ],
+          },
+          config: {
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.OBJECT,
@@ -568,7 +590,7 @@ REGRAS DE PRECISÃO:
       required: ['title', 'prepTimeMin', 'ingredientsList'],
     };
 
-    const response = await callWithFallback((model) =>
+    const response = await callWithFallback((model, useMinimal) =>
       ai.models.generateContent({
         model,
         contents: `Monte um planejamento alimentar semanal brasileiro completo (Segunda a Domingo) para ${input.servings} pessoa(s).
@@ -580,9 +602,11 @@ Alimentos que não gosta: ${(input.profile.dislikes || []).join(', ') || 'Nenhum
 Orçamento semanal: ${input.profile.weeklyBudgetBrl ? `R$ ${input.profile.weeklyBudgetBrl}` : 'Econômico'}.
 
 Priorize aproveitar os alimentos da despensa e reaproveitar bases culinárias ao longo da semana para economizar tempo e dinheiro.
-Informe os principais ingredientes com peso estimado em gramas por porção em cada refeição para cálculo TACO/TBCA.`,
+Informe os principais ingredientes com peso estimado em gramas por porção em cada refeição.`,
         config: {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          thinkingConfig: {
+            thinkingLevel: useMinimal ? ThinkingLevel.MINIMAL : ThinkingLevel.LOW,
+          },
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.ARRAY,
@@ -673,7 +697,7 @@ Informe os principais ingredientes com peso estimado em gramas por porção em c
       .map((p) => `${p.name} (${p.quantity} ${p.unit}, preço pago: ${p.purchasePriceBrl > 0 ? `R$ ${p.purchasePriceBrl}` : 'não informado'}, validade: ${p.expiryDate || 'não informada'})`)
       .join('; ');
 
-    const response = await callWithFallback((model) =>
+    const response = await callWithFallback((model, useMinimal) =>
       ai.models.generateContent({
         model,
         contents: `Analise a despensa e o orçamento alimentar brasileiro deste usuário e forneça recomendações práticas de economia e aproveitamento sem desperdício.
@@ -687,7 +711,9 @@ REGRAS:
 - Sugira substituições econômicas brasileiras realistas (ex.: proteína de maior rendimento, cortes sazonais, leguminosas, aproveitamento integral de talos/cascas).
 - Inclua orientações práticas de segurança alimentar e armazenamento.`,
         config: {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          thinkingConfig: {
+            thinkingLevel: useMinimal ? ThinkingLevel.MINIMAL : ThinkingLevel.LOW,
+          },
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.OBJECT,

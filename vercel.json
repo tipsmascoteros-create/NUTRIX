@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/index.ts": {
+    "api/index.mjs": {
       "maxDuration": 60,
       "includeFiles": "firebase-applet-config.json"
     }
@@ -37,7 +37,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api"
+      "destination": "/api/index"
     },
     {
       "source": "/((?!api/).*)",

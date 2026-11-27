@@ -183,6 +183,8 @@ export function LandingPage({
               alt="Prévia do NUTRIX organizando sua alimentação, receitas e economia doméstica"
               referrerPolicy="no-referrer"
               loading="eager"
+              fetchPriority="high"
+              decoding="sync"
               className="w-full h-auto block"
             />
           </div>
@@ -224,11 +226,12 @@ export function LandingPage({
             {PROBLEMS.map((problem) => (
               <div
                 key={problem.num}
-                className="pt-3.5 border-t border-[#E1E8E4] flex items-baseline gap-2.5"
+                className="pt-3.5 border-t border-[#E1E8E4] flex items-start gap-2.5"
               >
-                <span className="font-mono text-xs font-semibold text-[#173D32] tabular-nums shrink-0">
-                  {problem.num}
-                </span>
+                <Check
+                  className="w-4 h-4 text-[#173D32] shrink-0 mt-0.5"
+                  aria-hidden="true"
+                />
                 <div className="space-y-1">
                   <p className="text-sm sm:text-[15px] font-semibold text-[#111B17] leading-snug">
                     {problem.title}

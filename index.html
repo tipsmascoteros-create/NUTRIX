@@ -24,10 +24,26 @@
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://i.postimg.cc" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
+      rel="preload"
+      as="image"
+      href="https://i.postimg.cc/7hYYRmMH/Diseno-sin-titulo-2026-11-25T085727-460-(1).png"
+      referrerpolicy="no-referrer"
+      fetchpriority="high"
     />
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -53,23 +69,38 @@
         ]
       }
     </script>
-    <!-- Meta Pixel Code -->
+    <!-- Meta Pixel Code (synchronous queue + deferred script load for optimal LCP/FCP) -->
     <script>
-      !(function (f, b, e, v, n, t, s) {
+      !(function (f, b, e, v) {
         if (f.fbq) return;
-        n = f.fbq = function () {
+        var n = (f.fbq = function () {
           n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
-        };
+        });
         if (!f._fbq) f._fbq = n;
         n.push = n;
         n.loaded = !0;
         n.version = '2.0';
         n.queue = [];
-        t = b.createElement(e);
-        t.async = !0;
-        t.src = v;
-        s = b.getElementsByTagName(e)[0];
-        s.parentNode.insertBefore(t, s);
+        var loaded = false;
+        function loadPixelScript() {
+          if (loaded) return;
+          loaded = true;
+          var t = b.createElement(e);
+          t.async = !0;
+          t.src = v;
+          var s = b.getElementsByTagName(e)[0];
+          s.parentNode.insertBefore(t, s);
+        }
+        ['pointerdown', 'scroll', 'keydown', 'touchstart', 'mousemove'].forEach(function (ev) {
+          f.addEventListener(ev, loadPixelScript, { once: true, passive: true });
+        });
+        f.addEventListener(
+          'load',
+          function () {
+            setTimeout(loadPixelScript, 5500);
+          },
+          { once: true },
+        );
       })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
       fbq('init', '947666007689931');
       fbq('track', 'PageView');
@@ -86,7 +117,39 @@
         alt=""
       />
     </noscript>
-    <div id="root"></div>
+    <div id="root">
+      <div class="min-h-screen bg-[#F5F7F5] text-[#111B17]">
+        <header class="sticky top-0 z-40 bg-[#173D32]/95 border-b border-white/10">
+          <div class="max-w-7xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between gap-8">
+            <span class="font-display text-xl font-bold tracking-tight text-white">NUTRIX</span>
+            <div class="flex items-center gap-3 sm:gap-4">
+              <span class="text-sm font-semibold text-white">Entrar</span>
+              <span class="px-3.5 sm:px-4 py-2 rounded-xl bg-[#C3F28B] text-[#0F2B23] text-xs sm:text-sm font-semibold">
+                Começar agora
+              </span>
+            </div>
+          </div>
+        </header>
+        <section class="max-w-7xl mx-auto px-5 sm:px-8 pt-5 pb-12 lg:pt-8 lg:pb-16">
+          <div class="max-w-4xl mx-auto text-center flex flex-col items-center">
+            <h1 class="font-display text-3xl sm:text-4xl lg:text-[2.85rem] font-bold tracking-tight text-[#111B17] leading-[1.12] text-balance max-w-3xl">
+              Chega de abrir a geladeira e não saber o que preparar!
+            </h1>
+            <div class="mt-7 w-full max-w-3xl overflow-hidden rounded-2xl border border-[#DCE4DF] bg-white">
+              <img
+                src="https://i.postimg.cc/7hYYRmMH/Diseno-sin-titulo-2026-11-25T085727-460-(1).png"
+                alt="Prévia do NUTRIX organizando sua alimentação, receitas e economia doméstica"
+                referrerpolicy="no-referrer"
+                loading="eager"
+                fetchpriority="high"
+                decoding="sync"
+                class="w-full h-auto block"
+              />
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -30,6 +30,8 @@ export function FoodImage({ imageKey, alt, className = 'w-full h-48 object-cover
       src={NUTRIX_IMAGES[imageKey] || NUTRIX_IMAGES.hero}
       alt={alt}
       referrerPolicy="no-referrer"
+      loading="lazy"
+      decoding="async"
       onError={() => setFailed(true)}
       className={className}
     />

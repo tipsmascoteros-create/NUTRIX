@@ -2,7 +2,7 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { nutrixAI } from './aiProvider.js';
+import { GeminiProviderError, nutrixAI } from './aiProvider.js';
 import { verifyFirebaseIdToken, type VerifiedFirebaseUser } from './firebaseTokenVerifier.js';
 import {
   cancelStripeSubscription,
@@ -284,6 +284,15 @@ export function createApiApp(): Express {
     });
   });
 
+  function sendAiError(res: Response, error: unknown, fallbackMessage: string) {
+    if (error instanceof GeminiProviderError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    const message = error instanceof Error ? error.message : fallbackMessage;
+    res.status(502).json({ error: message });
+  }
+
   // --- AI Routes (Protected by Firebase Auth + Technical Usage Cap) ---
 
   app.post('/api/ai/recipes', requireAuth, async (req: AuthRequest, res) => {
@@ -323,8 +332,7 @@ export function createApiApp(): Express {
       res.json({ recipes, dailyUsage: { count: cap.count, limit: cap.limit } });
     } catch (error) {
       console.error('AI /api/ai/recipes error:', error);
-      const message = error instanceof Error ? error.message : 'Erro ao gerar receitas no Chef NUTRIX.';
-      res.status(502).json({ error: message });
+      sendAiError(res, error, 'Erro ao gerar receitas no Chef NUTRIX.');
     }
   });
 
@@ -350,8 +358,7 @@ export function createApiApp(): Express {
       res.json(result);
     } catch (error) {
       console.error('AI /api/ai/recognize-photo error:', error);
-      const message = error instanceof Error ? error.message : 'Erro ao analisar fotografia.';
-      res.status(502).json({ error: message });
+      sendAiError(res, error, 'Erro ao analisar fotografia.');
     }
   });
 
@@ -376,8 +383,7 @@ export function createApiApp(): Express {
       res.json(result);
     } catch (error) {
       console.error('AI /api/ai/meal-plan error:', error);
-      const message = error instanceof Error ? error.message : 'Erro ao gerar planejamento semanal.';
-      res.status(502).json({ error: message });
+      sendAiError(res, error, 'Erro ao gerar planejamento semanal.');
     }
   });
 
@@ -401,8 +407,7 @@ export function createApiApp(): Express {
       res.json(result);
     } catch (error) {
       console.error('AI /api/ai/economy-tips error:', error);
-      const message = error instanceof Error ? error.message : 'Erro ao analisar economia doméstica.';
-      res.status(502).json({ error: message });
+      sendAiError(res, error, 'Erro ao analisar economia doméstica.');
     }
   });
 

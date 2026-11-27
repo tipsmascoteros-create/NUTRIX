@@ -46,19 +46,133 @@ export interface NutrixAIProvider {
   }): Promise<EconomyTipResult>;
 }
 
-async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 2): Promise<T> {
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+export class GeminiProviderError extends Error {
+  readonly statusCode: number;
+
+  constructor(message: string, statusCode: number) {
+    super(message);
+    this.name = 'GeminiProviderError';
+    this.statusCode = statusCode;
+  }
+}
+
+const PRIMARY_MODEL = 'gemini-4-hydrogen';
+const FALLBACK_MODEL = 'gemini-3.1-flash-lite';
+
+function extractUpstreamErrorInfo(error: unknown): { code?: number; status?: string; message: string } {
+  const errObj = (error && typeof error === 'object' ? error : {}) as {
+    status?: number | string;
+    code?: number | string;
+    message?: string;
+  };
+  let rawMessage = error instanceof Error ? error.message : String(error ?? '');
+  let code = typeof errObj.status === 'number' ? errObj.status : typeof errObj.code === 'number' ? errObj.code : undefined;
+  let status = typeof errObj.status === 'string' ? errObj.status : undefined;
+
+  const trimmed = rawMessage.trim();
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
     try {
-      return await fn();
+      const parsed = JSON.parse(trimmed) as {
+        error?: { code?: number; status?: string; message?: string };
+      };
+      if (parsed.error) {
+        if (typeof parsed.error.code === 'number') code = parsed.error.code;
+        if (typeof parsed.error.status === 'string') status = parsed.error.status;
+        if (typeof parsed.error.message === 'string') rawMessage = parsed.error.message;
+      }
+    } catch {
+      // Keep original message
+    }
+  }
+
+  return { code, status, message: rawMessage };
+}
+
+function isRetryableOverload(info: { code?: number; status?: string; message: string }): boolean {
+  if (info.code === 503 || info.code === 500 || info.code === 504) return true;
+  if (info.status === 'UNAVAILABLE' || info.status === 'INTERNAL' || info.status === 'DEADLINE_EXCEEDED') {
+    return true;
+  }
+  return /high demand|overloaded|unavailable|temporarily|timeout|econnreset|etimedout|fetch failed/i.test(
+    info.message,
+  );
+}
+
+function isRateLimitError(info: { code?: number; status?: string; message: string }): boolean {
+  return info.code === 429 || info.status === 'RESOURCE_EXHAUSTED' || /quota|rate limit|resource_exhausted/i.test(info.message);
+}
+
+function toFriendlyProviderError(error: unknown): GeminiProviderError {
+  if (error instanceof GeminiProviderError) return error;
+  const info = extractUpstreamErrorInfo(error);
+
+  if (info.message.includes('GEMINI_API_KEY')) {
+    return new GeminiProviderError('GEMINI_API_KEY não configurada no servidor.', 502);
+  }
+  if (isRetryableOverload(info)) {
+    return new GeminiProviderError(
+      'O serviço está com pico temporário de demanda neste momento. Aguarde alguns segundos e tente novamente.',
+      503,
+    );
+  }
+  if (isRateLimitError(info)) {
+    return new GeminiProviderError(
+      'Limite momentâneo de solicitações atingido. Aguarde cerca de 1 minuto e tente novamente.',
+      429,
+    );
+  }
+  if (
+    info.code === 403 ||
+    info.status === 'PERMISSION_DENIED' ||
+    /API_KEY_INVALID|API key not valid/i.test(info.message)
+  ) {
+    return new GeminiProviderError(
+      'Chave de API inválida ou sem permissão. Verifique GEMINI_API_KEY nas configurações do servidor.',
+      502,
+    );
+  }
+
+  return new GeminiProviderError(
+    'Não foi possível concluir a geração agora. Tente novamente em alguns instantes.',
+    502,
+  );
+}
+
+async function callWithFallback<T>(runForModel: (model: string) => Promise<T>): Promise<T> {
+  const attempts: Array<{ model: string; delayAfterMs: number }> = [
+    { model: PRIMARY_MODEL, delayAfterMs: 900 },
+    { model: PRIMARY_MODEL, delayAfterMs: 1400 },
+    { model: FALLBACK_MODEL, delayAfterMs: 1400 },
+    { model: FALLBACK_MODEL, delayAfterMs: 0 },
+  ];
+
+  let lastError: unknown;
+  for (let i = 0; i < attempts.length; i++) {
+    const { model, delayAfterMs } = attempts[i];
+    try {
+      return await runForModel(model);
     } catch (error) {
       lastError = error;
-      if (attempt < maxAttempts) {
-        await new Promise((r) => setTimeout(r, 600 * attempt));
+      const info = extractUpstreamErrorInfo(error);
+      const retryable = isRetryableOverload(info);
+      const rateLimited = isRateLimitError(info);
+
+      if (!retryable && !rateLimited) {
+        throw toFriendlyProviderError(error);
+      }
+
+      // If primary model hits rate limit, jump straight to fallback model
+      if (rateLimited && model === PRIMARY_MODEL) {
+        i = 1; // Next iteration will be index 2 (FALLBACK_MODEL)
+      }
+
+      if (i < attempts.length - 1 && delayAfterMs > 0) {
+        await new Promise((r) => setTimeout(r, delayAfterMs));
       }
     }
   }
-  throw lastError;
+
+  throw toFriendlyProviderError(lastError);
 }
 
 function normalizeName(str: string): string {
@@ -197,9 +311,9 @@ REGRAS OBRIGATÓRIAS:
 5. Inclua passo a passo objetivo, substituições econômicas reais e sugestões de acompanhamento.
 `.trim();
 
-    const response = await withRetry(() =>
+    const response = await callWithFallback((model) =>
       ai.models.generateContent({
-        model: this.providerName,
+        model,
         contents: prompt,
         config: {
           systemInstruction:
@@ -317,9 +431,9 @@ REGRAS OBRIGATÓRIAS:
   ): Promise<{ items: RecognizedIngredient[]; safetyNote: string }> {
     const { ai, ThinkingLevel, Type } = await this.getClient();
 
-    const response = await withRetry(() =>
+    const response = await callWithFallback((model) =>
       ai.models.generateContent({
-        model: this.providerName,
+        model,
         contents: {
           parts: [
             {
@@ -454,9 +568,9 @@ REGRAS DE PRECISÃO:
       required: ['title', 'prepTimeMin', 'ingredientsList'],
     };
 
-    const response = await withRetry(() =>
+    const response = await callWithFallback((model) =>
       ai.models.generateContent({
-        model: this.providerName,
+        model,
         contents: `Monte um planejamento alimentar semanal brasileiro completo (Segunda a Domingo) para ${input.servings} pessoa(s).
 Despensa atual: ${available || 'Despensa vazia — use alimentos brasileiros acessíveis do dia a dia'}.
 Objetivo: ${input.profile.goal || 'Comer de maneira mais equilibrada'}.
@@ -559,9 +673,9 @@ Informe os principais ingredientes com peso estimado em gramas por porção em c
       .map((p) => `${p.name} (${p.quantity} ${p.unit}, preço pago: ${p.purchasePriceBrl > 0 ? `R$ ${p.purchasePriceBrl}` : 'não informado'}, validade: ${p.expiryDate || 'não informada'})`)
       .join('; ');
 
-    const response = await withRetry(() =>
+    const response = await callWithFallback((model) =>
       ai.models.generateContent({
-        model: this.providerName,
+        model,
         contents: `Analise a despensa e o orçamento alimentar brasileiro deste usuário e forneça recomendações práticas de economia e aproveitamento sem desperdício.
 Despensa: ${itemsList || 'Sem itens cadastrados'}.
 Orçamento semanal: R$ ${input.profile.weeklyBudgetBrl || 0}.
